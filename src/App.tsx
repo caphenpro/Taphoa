@@ -163,7 +163,7 @@ export default function App() {
   const debtorsCount = appState.customers.filter(c => c.totalDebt > 0).length;
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
+    <div className="flex flex-col h-dvh w-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
       {/* APP TOP NAVIGATION BAR */}
       <header className="bg-slate-900 text-white border-b border-slate-800 shrink-0 z-20">
         <div className="flex items-center justify-between px-3 md:px-5 py-2.5">
