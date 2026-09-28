@@ -1,0 +1,6 @@
+{
+  "name": "Tạp Hóa Pro - Quản Lý Bán Hàng, Kho & Công Nợ",
+  "description": "Hệ thống quản lý bán hàng POS, quản lý xuất nhập tồn, công nợ khách hàng, tích điểm, báo cáo doanh thu lợi nhuận và sao lưu Google Drive.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
