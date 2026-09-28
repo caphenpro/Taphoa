@@ -325,10 +325,25 @@ export const POSComponent: React.FC<POSProps> = ({
     setIsQuickCustomerModal(false);
   };
 
+  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const scrollToCart = () => {
+    const el = document.getElementById('pos-cart-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const scrollToCatalog = () => {
+    const el = document.getElementById('pos-catalog-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 p-2 md:p-4 bg-slate-50 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full gap-4 p-2 md:p-4 bg-slate-50 overflow-y-auto lg:overflow-hidden relative">
       {/* LEFT: Product Catalog & Fast search */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div
+        id="pos-catalog-section"
+        className="flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:shrink lg:overflow-hidden min-h-[420px] lg:min-h-0"
+      >
         {/* Search Header */}
         <div className="p-3 border-b border-slate-200 bg-white space-y-3">
           <div className="flex items-center gap-2">
@@ -369,6 +384,28 @@ export const POSComponent: React.FC<POSProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Mobile floating quick view & scroll to cart bar */}
+        {cart.length > 0 && (
+          <div className="lg:hidden p-2.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shadow-sm shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-sky-400 text-slate-900 font-extrabold text-xs flex items-center justify-center">
+                {totalCartCount}
+              </span>
+              <div className="text-xs">
+                <span className="text-slate-300">Đã chọn {totalCartCount} món • </span>
+                <span className="font-bold text-emerald-400 text-sm">{formatVND(finalTotal)}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={scrollToCart}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+            >
+              <span>Xem giỏ hàng & thanh toán ↓</span>
+            </button>
+          </div>
+        )}
 
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
@@ -435,7 +472,20 @@ export const POSComponent: React.FC<POSProps> = ({
       </div>
 
       {/* RIGHT: Bill & Checkout Panel */}
-      <div className="w-full lg:w-96 xl:w-[420px] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
+      <div
+        id="pos-cart-section"
+        className="w-full lg:w-96 xl:w-[420px] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:overflow-hidden"
+      >
+        <div className="lg:hidden p-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
+          <span>🛒 GIỎ HÀNG & THANH TOÁN</span>
+          <button
+            type="button"
+            onClick={scrollToCatalog}
+            className="text-sky-600 hover:underline text-[11px] font-semibold"
+          >
+            ↑ Chọn thêm sản phẩm
+          </button>
+        </div>
         {/* Customer Header */}
         <div className="p-3 border-b border-slate-200 bg-slate-50/70">
           <div className="flex items-center justify-between gap-2">
@@ -484,7 +534,7 @@ export const POSComponent: React.FC<POSProps> = ({
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-2 max-h-[300px] lg:max-h-none">
+        <div className="flex-1 min-h-[100px] overflow-y-auto p-2.5 space-y-2">
           {cart.map(item => (
             <div
               key={item.productId}
