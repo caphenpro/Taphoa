@@ -62,9 +62,6 @@ export const POSComponent: React.FC<POSProps> = ({
   const [isAmountManuallySet, setIsAmountManuallySet] = useState(false);
   const [orderNote, setOrderNote] = useState('');
 
-  // Mobile tab state: 'catalog' vs 'cart'
-  const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
-
   // Success modal state
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
@@ -330,47 +327,23 @@ export const POSComponent: React.FC<POSProps> = ({
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const scrollToCart = () => {
+    const el = document.getElementById('pos-cart-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const scrollToCatalog = () => {
+    const el = document.getElementById('pos-catalog-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-2 md:gap-4 p-2 md:p-4 bg-slate-50 overflow-hidden relative">
-      {/* Mobile Header Switcher (Visible only on < lg screens) */}
-      <div className="lg:hidden flex bg-slate-200 p-1 rounded-xl shrink-0 gap-1">
-        <button
-          type="button"
-          onClick={() => setMobileTab('catalog')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-            mobileTab === 'catalog'
-              ? 'bg-sky-600 text-white shadow-sm'
-              : 'text-slate-700 hover:text-slate-900'
-          }`}
-        >
-          <span>📦 Chọn Sản Phẩm</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileTab('cart')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 relative ${
-            mobileTab === 'cart'
-              ? 'bg-sky-600 text-white shadow-sm'
-              : 'text-slate-700 hover:text-slate-900'
-          }`}
-        >
-          <Receipt className="w-3.5 h-3.5" />
-          <span>Giỏ Hàng & Thanh Toán</span>
-          {totalCartCount > 0 && (
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-              mobileTab === 'cart' ? 'bg-white text-sky-700' : 'bg-sky-600 text-white'
-            }`}>
-              {totalCartCount}
-            </span>
-          )}
-        </button>
-      </div>
-
+    <div className="flex flex-col lg:flex-row h-full gap-4 p-2 md:p-4 bg-slate-50 overflow-y-auto lg:overflow-hidden relative">
       {/* LEFT: Product Catalog & Fast search */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${
-        mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'
-      }`}>
+      <div
+        id="pos-catalog-section"
+        className="flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:shrink lg:overflow-hidden min-h-[420px] lg:min-h-0"
+      >
         {/* Search Header */}
         <div className="p-3 border-b border-slate-200 bg-white space-y-3">
           <div className="flex items-center gap-2">
@@ -412,25 +385,24 @@ export const POSComponent: React.FC<POSProps> = ({
           </div>
         </div>
 
-        {/* Mobile floating quick view cart bar */}
+        {/* Mobile floating quick view & scroll to cart bar */}
         {cart.length > 0 && (
-          <div className="lg:hidden p-2.5 bg-sky-900 text-white flex items-center justify-between border-b border-sky-800 shrink-0">
+          <div className="lg:hidden p-2.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shadow-sm shrink-0">
             <div className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-sky-400 text-slate-900 font-extrabold text-xs flex items-center justify-center">
                 {totalCartCount}
               </span>
               <div className="text-xs">
-                <span className="text-slate-300">Tổng tiền: </span>
-                <span className="font-bold text-amber-300 text-sm">{formatVND(finalTotal)}</span>
+                <span className="text-slate-300">Đã chọn {totalCartCount} món • </span>
+                <span className="font-bold text-emerald-400 text-sm">{formatVND(finalTotal)}</span>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setMobileTab('cart')}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+              onClick={scrollToCart}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
             >
-              <span>Xem giỏ hàng</span>
-              <Receipt className="w-3.5 h-3.5" />
+              <span>Xem giỏ hàng & thanh toán ↓</span>
             </button>
           </div>
         )}
@@ -500,9 +472,20 @@ export const POSComponent: React.FC<POSProps> = ({
       </div>
 
       {/* RIGHT: Bill & Checkout Panel */}
-      <div className={`w-full lg:w-96 xl:w-[420px] flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0 min-h-0 ${
-        mobileTab === 'cart' ? 'flex flex-1' : 'hidden lg:flex'
-      }`}>
+      <div
+        id="pos-cart-section"
+        className="w-full lg:w-96 xl:w-[420px] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:overflow-hidden"
+      >
+        <div className="lg:hidden p-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
+          <span>🛒 GIỎ HÀNG & THANH TOÁN</span>
+          <button
+            type="button"
+            onClick={scrollToCatalog}
+            className="text-sky-600 hover:underline text-[11px] font-semibold"
+          >
+            ↑ Chọn thêm sản phẩm
+          </button>
+        </div>
         {/* Customer Header */}
         <div className="p-3 border-b border-slate-200 bg-slate-50/70">
           <div className="flex items-center justify-between gap-2">
