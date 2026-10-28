@@ -1,3 +1,14 @@
+export interface PriceHistoryEntry {
+  id: string;
+  productId: string;
+  productName: string;
+  productCode: string;
+  oldPrice: number;
+  newPrice: number;
+  changedAt: string;
+  reason: string;
+}
+
 export interface Product {
   id: string;
   code: string; // barcode or custom SKU
@@ -113,6 +124,7 @@ export interface AppStateData {
   orders: Order[];
   inventoryTransactions: InventoryTransaction[];
   debtPayments: DebtPayment[];
+  priceHistory: PriceHistoryEntry[];
   settings: StoreSettings;
   lastBackupDate?: string;
 }
