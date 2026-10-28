@@ -12,7 +12,7 @@ import {
   RotateCcw,
   ShieldCheck
 } from 'lucide-react';
-import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings } from './types';
+import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry } from './types';
 import { loadAppState, saveAppState } from './utils/storage';
 import { POSComponent } from './components/POSComponent';
 import { InventoryComponent } from './components/InventoryComponent';
@@ -78,6 +78,28 @@ export default function App() {
         customers: updatedCustomers,
         orders: [order, ...prev.orders],
         inventoryTransactions: [...newTransactions, ...prev.inventoryTransactions],
+      };
+    });
+  };
+
+  const handleUpdateSellingPrice = (productId: string, newPrice: number, reason: string) => {
+    setAppState(prev => {
+      const product = prev.products.find(p => p.id === productId);
+      if (!product || product.sellingPrice === newPrice) return prev;
+      const entry: PriceHistoryEntry = {
+        id: 'price-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        productId,
+        productName: product.name,
+        productCode: product.code,
+        oldPrice: product.sellingPrice,
+        newPrice,
+        changedAt: new Date().toISOString(),
+        reason,
+      };
+      return {
+        ...prev,
+        products: prev.products.map(p => p.id === productId ? { ...p, sellingPrice: newPrice, updatedAt: entry.changedAt } : p),
+        priceHistory: [entry, ...(prev.priceHistory || [])],
       };
     });
   };
@@ -278,6 +300,7 @@ export default function App() {
             settings={appState.settings}
             onCompleteOrder={handleCompleteOrder}
             onAddQuickProduct={handleAddProduct}
+            onUpdateSellingPrice={handleUpdateSellingPrice}
             onAddQuickCustomer={handleAddCustomer}
           />
         )}
