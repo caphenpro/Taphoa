@@ -20,6 +20,7 @@ export function loadAppState(): AppStateData {
       orders: parsed.orders || initialData.orders,
       inventoryTransactions: parsed.inventoryTransactions || initialData.inventoryTransactions,
       debtPayments: parsed.debtPayments || initialData.debtPayments,
+      priceHistory: parsed.priceHistory || [],
     };
   } catch (err) {
     console.error('Error loading state from localStorage:', err);

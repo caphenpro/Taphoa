@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Sparkles,
   Award,
-  AlertCircle
+  AlertCircle,
+  PackagePlus
 } from 'lucide-react';
 import { Product, Customer, CartItem, Order, PaymentMethod, StoreSettings } from '../types';
 import { formatVND, generateOrderNumber } from '../utils/storage';
@@ -26,6 +27,7 @@ interface POSProps {
   settings: StoreSettings;
   onCompleteOrder: (order: Order, updatedCustomer?: Customer) => void;
   onAddQuickProduct: (product: Product) => void;
+  onUpdateSellingPrice: (productId: string, newPrice: number, reason: string) => void;
   onAddQuickCustomer: (customer: Customer) => void;
 }
 
@@ -35,6 +37,7 @@ export const POSComponent: React.FC<POSProps> = ({
   settings,
   onCompleteOrder,
   onAddQuickProduct,
+  onUpdateSellingPrice,
   onAddQuickCustomer,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,6 +73,17 @@ export const POSComponent: React.FC<POSProps> = ({
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editDiscountType, setEditDiscountType] = useState<'fixed' | 'percentage'>('fixed');
   const [editDiscountValue, setEditDiscountValue] = useState<number>(0);
+  const [updateCatalogPrice, setUpdateCatalogPrice] = useState(false);
+
+  // Quick product creation from POS search
+  const [isQuickProductModal, setIsQuickProductModal] = useState(false);
+  const [quickProductName, setQuickProductName] = useState('');
+  const [quickProductCode, setQuickProductCode] = useState('');
+  const [quickProductCategory, setQuickProductCategory] = useState('');
+  const [quickProductUnit, setQuickProductUnit] = useState('cái');
+  const [quickProductCost, setQuickProductCost] = useState(0);
+  const [quickProductPrice, setQuickProductPrice] = useState(0);
+  const [quickProductStock, setQuickProductStock] = useState(0);
 
   // Categories list
   const categories = useMemo(() => {
@@ -205,10 +219,14 @@ export const POSComponent: React.FC<POSProps> = ({
     setEditPrice(item.customPrice);
     setEditDiscountType(item.discountType);
     setEditDiscountValue(item.discountValue);
+    setUpdateCatalogPrice(false);
   };
 
   const saveItemEditor = () => {
     if (!editingItem) return;
+    if (updateCatalogPrice && editPrice !== editingItem.originalPrice) {
+      onUpdateSellingPrice(editingItem.productId, editPrice, 'Điều chỉnh giá bán tại POS');
+    }
     setCart(prev =>
       prev.map(i => {
         if (i.productId === editingItem.productId) {
@@ -300,6 +318,42 @@ export const POSComponent: React.FC<POSProps> = ({
     setAmountPaid(0);
     setIsAmountManuallySet(false);
     setOrderNote('');
+  };
+
+  const handleCreateQuickProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = quickProductName.trim();
+    const code = quickProductCode.trim() || 'SP-' + Date.now().toString().slice(-8);
+    if (!name) return;
+    const duplicate = products.some(p => p.code.toLowerCase() === code.toLowerCase());
+    if (duplicate) {
+      alert('Mã sản phẩm đã tồn tại. Vui lòng nhập mã khác.');
+      return;
+    }
+    const product: Product = {
+      id: 'prod-' + Date.now(),
+      code,
+      name,
+      category: quickProductCategory.trim() || 'Chưa phân loại',
+      unit: quickProductUnit.trim() || 'cái',
+      costPrice: Math.max(0, quickProductCost),
+      sellingPrice: Math.max(0, quickProductPrice),
+      stock: Math.max(0, quickProductStock),
+      minStockAlert: 5,
+      updatedAt: new Date().toISOString(),
+    };
+    onAddQuickProduct(product);
+    addToCart(product);
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setIsQuickProductModal(false);
+    setQuickProductName('');
+    setQuickProductCode('');
+    setQuickProductCategory('');
+    setQuickProductUnit('cái');
+    setQuickProductCost(0);
+    setQuickProductPrice(0);
+    setQuickProductStock(0);
   };
 
   const handleCreateQuickCustomer = (e: React.FormEvent) => {
@@ -466,6 +520,19 @@ export const POSComponent: React.FC<POSProps> = ({
               <AlertCircle className="w-10 h-10 mb-2 stroke-1" />
               <p className="text-sm font-medium">Không tìm thấy sản phẩm phù hợp</p>
               <p className="text-xs text-slate-400 mt-1">Thử đổi từ khóa hoặc quét lại mã vạch</p>
+              {searchTerm.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickProductName(searchTerm.trim());
+                    setQuickProductCode(/^\d+$/.test(searchTerm.trim()) ? searchTerm.trim() : '');
+                    setIsQuickProductModal(true);
+                  }}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Thêm sản phẩm “{searchTerm.trim()}”
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -862,6 +929,18 @@ export const POSComponent: React.FC<POSProps> = ({
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 p-2.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={updateCatalogPrice}
+                  onChange={e => setUpdateCatalogPrice(e.target.checked)}
+                  className="mt-0.5 rounded"
+                />
+                <span>
+                  <span className="block font-bold">Cập nhật giá niêm yết của sản phẩm</span>
+                  <span className="block text-[11px] mt-0.5 text-sky-700">Lưu giá mới vào danh mục và ghi lại lịch sử giá. Nếu bỏ chọn, chỉ áp dụng cho đơn này.</span>
+                </span>
+              </label>
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
                 <span className="text-slate-600 font-medium">Thành tiền sau giảm:</span>
                 <span className="text-sm font-bold text-sky-700">
@@ -890,6 +969,58 @@ export const POSComponent: React.FC<POSProps> = ({
                 Áp dụng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Thêm nhanh sản phẩm từ POS */}
+      {isQuickProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-base text-slate-900 mb-1 flex items-center gap-2">
+              <PackagePlus className="w-5 h-5 text-sky-600" /> Thêm sản phẩm mới
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">Sản phẩm sẽ được lưu vào danh mục và tự động thêm vào giỏ hàng hiện tại.</p>
+            <form onSubmit={handleCreateQuickProduct} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tên sản phẩm (*)</label>
+                <input required autoFocus value={quickProductName} onChange={e => setQuickProductName(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold" placeholder="Tên sản phẩm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mã vạch / SKU</label>
+                  <input value={quickProductCode} onChange={e => setQuickProductCode(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Tự sinh nếu để trống" />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Danh mục</label>
+                  <input value={quickProductCategory} onChange={e => setQuickProductCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="Bánh kẹo..." />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Đơn vị tính</label>
+                  <input value={quickProductUnit} onChange={e => setQuickProductUnit(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="cái, chai, gói..." />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tồn kho ban đầu</label>
+                  <input type="number" min="0" value={quickProductStock} onChange={e => setQuickProductStock(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Giá vốn (VNĐ)</label>
+                  <input type="number" min="0" value={quickProductCost} onChange={e => setQuickProductCost(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Giá bán (VNĐ)</label>
+                  <input type="number" min="0" value={quickProductPrice} onChange={e => setQuickProductPrice(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setIsQuickProductModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg font-semibold text-slate-600">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-bold">Lưu & thêm vào giỏ</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

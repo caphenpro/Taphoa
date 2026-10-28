@@ -320,6 +320,7 @@ export const initialData: AppStateData = {
       note: 'Nhập bia phục vụ cuối tuần'
     }
   ],
+  priceHistory: [],
   debtPayments: [
     {
       id: 'pay-1',

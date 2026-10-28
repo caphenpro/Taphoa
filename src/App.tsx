@@ -10,9 +10,10 @@ import {
   Download,
   AlertTriangle,
   RotateCcw,
-  ShieldCheck
+  ShieldCheck,
+  History
 } from 'lucide-react';
-import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings } from './types';
+import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry } from './types';
 import { loadAppState, saveAppState } from './utils/storage';
 import { POSComponent } from './components/POSComponent';
 import { InventoryComponent } from './components/InventoryComponent';
@@ -22,7 +23,7 @@ import { SyncAndSettingsComponent } from './components/SyncAndSettingsComponent'
 
 export default function App() {
   const [appState, setAppState] = useState<AppStateData>(() => loadAppState());
-  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync' | 'prices'>('pos');
 
   // Sync state to local storage whenever modified
   useEffect(() => {
@@ -78,6 +79,28 @@ export default function App() {
         customers: updatedCustomers,
         orders: [order, ...prev.orders],
         inventoryTransactions: [...newTransactions, ...prev.inventoryTransactions],
+      };
+    });
+  };
+
+  const handleUpdateSellingPrice = (productId: string, newPrice: number, reason: string) => {
+    setAppState(prev => {
+      const product = prev.products.find(p => p.id === productId);
+      if (!product || product.sellingPrice === newPrice) return prev;
+      const entry: PriceHistoryEntry = {
+        id: 'price-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        productId,
+        productName: product.name,
+        productCode: product.code,
+        oldPrice: product.sellingPrice,
+        newPrice,
+        changedAt: new Date().toISOString(),
+        reason,
+      };
+      return {
+        ...prev,
+        products: prev.products.map(p => p.id === productId ? { ...p, sellingPrice: newPrice, updatedAt: entry.changedAt } : p),
+        priceHistory: [entry, ...(prev.priceHistory || [])],
       };
     });
   };
@@ -266,6 +289,17 @@ export default function App() {
           >
             <Settings className="w-4 h-4" /> Cài Đặt & Đồng Bộ
           </button>
+
+          <button
+            onClick={() => setActiveTab('prices')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
+              activeTab === 'prices'
+                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
+                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
+            }`}
+          >
+            <History className="w-4 h-4" /> Lịch sử giá
+          </button>
         </div>
       </header>
 
@@ -278,6 +312,7 @@ export default function App() {
             settings={appState.settings}
             onCompleteOrder={handleCompleteOrder}
             onAddQuickProduct={handleAddProduct}
+            onUpdateSellingPrice={handleUpdateSellingPrice}
             onAddQuickCustomer={handleAddCustomer}
           />
         )}
@@ -314,6 +349,47 @@ export default function App() {
             transactions={appState.inventoryTransactions}
             settings={appState.settings}
           />
+        )}
+
+        {activeTab === 'prices' && (
+          <div className="h-full overflow-y-auto p-3 md:p-5">
+            <div className="max-w-6xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200">
+                <h2 className="font-bold text-slate-900 flex items-center gap-2"><History className="w-5 h-5 text-sky-600" /> Lịch sử điều chỉnh giá bán</h2>
+                <p className="text-xs text-slate-500 mt-1">Ghi lại các lần cập nhật giá niêm yết từ màn hình bán hàng POS.</p>
+              </div>
+              {(!appState.priceHistory || appState.priceHistory.length === 0) ? (
+                <div className="p-10 text-center text-sm text-slate-400">Chưa có lịch sử thay đổi giá.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="px-4 py-3">Thời gian</th>
+                        <th className="px-4 py-3">Sản phẩm</th>
+                        <th className="px-4 py-3 text-right">Giá cũ</th>
+                        <th className="px-4 py-3 text-right">Giá mới</th>
+                        <th className="px-4 py-3 text-right">Chênh lệch</th>
+                        <th className="px-4 py-3">Lý do</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[...appState.priceHistory].sort((x, y) => y.changedAt.localeCompare(x.changedAt)).map(entry => (
+                        <tr key={entry.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(entry.changedAt).toLocaleString('vi-VN')}</td>
+                          <td className="px-4 py-3"><div className="font-semibold text-slate-800">{entry.productName}</div><div className="font-mono text-slate-400 mt-0.5">{entry.productCode}</div></td>
+                          <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{new Intl.NumberFormat('vi-VN').format(entry.oldPrice)} đ</td>
+                          <td className="px-4 py-3 text-right font-bold text-sky-700 whitespace-nowrap">{new Intl.NumberFormat('vi-VN').format(entry.newPrice)} đ</td>
+                          <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${entry.newPrice > entry.oldPrice ? 'text-rose-600' : 'text-emerald-600'}`}>{entry.newPrice > entry.oldPrice ? '+' : ''}{new Intl.NumberFormat('vi-VN').format(entry.newPrice - entry.oldPrice)} đ</td>
+                          <td className="px-4 py-3 text-slate-600">{entry.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {activeTab === 'sync' && (
