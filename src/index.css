@@ -1,1 +1,40 @@
 @import "tailwindcss";
+
+/* Compact, touch-friendly layout for Android phones */
+:root { color-scheme: light; }
+html, body, #root { min-height: 100%; width: 100%; margin: 0; }
+body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+button, input, select, textarea { touch-action: manipulation; }
+button { min-height: 38px; }
+input, select, textarea { font-size: 16px; } /* prevents Android Chrome zoom on focus */
+
+@media (max-width: 640px) {
+  #root > div { width: 100%; min-height: 100dvh; height: 100dvh; }
+  #root header > div:first-child { padding: 8px 10px; }
+  #root header > div:first-child .w-9 { width: 32px; height: 32px; }
+  #root header > div:first-child .gap-3 { gap: 8px; }
+  #root header > div:first-child .text-sm { font-size: 13px; }
+  #root header > div:nth-child(2) {
+    padding-left: 4px; padding-right: 4px; gap: 2px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  #root header > div:nth-child(2)::-webkit-scrollbar { display: none; }
+  #root header > div:nth-child(2) button {
+    flex: 0 0 auto; padding: 9px 10px; gap: 6px; font-size: 11px;
+  }
+  #root header > div:nth-child(2) button svg { width: 15px; height: 15px; }
+  #root main { min-height: 0; overscroll-behavior: contain; }
+  #root main > * { min-width: 0; }
+  #root main .max-w-7xl, #root main .max-w-6xl, #root main .max-w-5xl {
+    max-width: 100%; padding-left: 10px; padding-right: 10px;
+  }
+  #root main .p-6 { padding: 12px; }
+  #root main .p-5 { padding: 10px; }
+  #root main .gap-6 { gap: 12px; }
+  #root main .gap-4 { gap: 10px; }
+  #root main .rounded-2xl { border-radius: 12px; }
+  #root main table { min-width: 520px; }
+}
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}
