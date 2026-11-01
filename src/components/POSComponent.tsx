@@ -31,6 +31,8 @@ interface POSProps {
   onAddQuickCustomer: (customer: Customer) => void;
 }
 
+const suggestRetailPrice = (unitCost: number) => unitCost > 0 ? Math.ceil((unitCost * 1.15) / 1000) * 1000 : 0;
+
 export const POSComponent: React.FC<POSProps> = ({
   products,
   customers,
@@ -917,6 +919,7 @@ export const POSComponent: React.FC<POSProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Đơn giá bán tùy chỉnh (Giá gốc: {formatVND(editingItem.originalPrice)})
                 </label>
+                <p className="text-[11px] text-slate-500 mb-1">Có thể sửa giá riêng cho đơn này; chỉ lưu vào giá niêm yết nếu chọn ô bên dưới.</p>
                 <div className="relative">
                   <input
                     type="number"
@@ -1038,10 +1041,14 @@ export const POSComponent: React.FC<POSProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Giá vốn (VNĐ)</label>
-                  <input type="number" min="0" value={quickProductCost} onChange={e => setQuickProductCost(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                  <input type="number" min="0" value={quickProductCost} onChange={e => {
+                      const nextCost = Number(e.target.value) || 0;
+                      setQuickProductCost(nextCost);
+                      setQuickProductPrice(suggestRetailPrice(nextCost));
+                    }} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Giá bán (VNĐ)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Giá bán gợi ý (VNĐ)</label>
                   <input type="number" min="0" value={quickProductPrice} onChange={e => setQuickProductPrice(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
                 </div>
               </div>
