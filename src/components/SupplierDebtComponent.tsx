@@ -27,7 +27,7 @@ export const SupplierDebtComponent: React.FC<Props> = ({ debts, payments, onReco
   const totalDebt = debts.reduce((sum, d) => sum + Math.max(0, d.remainingAmount), 0);
   const totalPaid = debts.reduce((sum, d) => sum + d.paidAmount, 0);
 
-  const addDebt = (e: React.FormEvent) => {
+  // Record an opening balance when the shop already owes a supplier.\n  const addDebt = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSupplier.trim() || newDebtAmount <= 0) return;
     onAddDebt(newSupplier.trim(), newDebtAmount, newDebtNote.trim());
