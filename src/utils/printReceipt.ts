@@ -1,12 +1,43 @@
 import { Order, StoreSettings } from '../types';
 import { formatVND, formatDate } from './storage';
 
+function showPrintDocument(html: string) {
+  const existing = document.getElementById('taphoa-print-overlay');
+  existing?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'taphoa-print-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;flex-direction:column;';
+  const toolbar = document.createElement('div');
+  toolbar.style.cssText = 'height:48px;min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#0f172a;color:#fff;font:14px sans-serif;';
+  const title = document.createElement('strong');
+  title.textContent = 'Bản xem trước khi in';
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;';
+  const printButton = document.createElement('button');
+  printButton.type = 'button';
+  printButton.textContent = 'In lại';
+  printButton.style.cssText = 'padding:7px 12px;border:0;border-radius:6px;background:#0284c7;color:#fff;font-weight:600;';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.textContent = 'Đóng';
+  closeButton.style.cssText = 'padding:7px 12px;border:1px solid #94a3b8;border-radius:6px;background:transparent;color:#fff;font-weight:600;';
+  actions.append(printButton, closeButton);
+  toolbar.append(title, actions);
+  const frame = document.createElement('iframe');
+  frame.title = 'Bản in';
+  frame.style.cssText = 'border:0;flex:1;width:100%;background:#fff;';
+  const close = () => overlay.remove();
+  closeButton.addEventListener('click', close);
+  printButton.addEventListener('click', () => frame.contentWindow?.print());
+  overlay.append(toolbar, frame);
+  document.body.appendChild(overlay);
+  frame.addEventListener('load', () => {
+    frame.contentWindow?.addEventListener('afterprint', close, { once: true });
+  }, { once: true });
+  frame.srcdoc = html;
+}
+
 export function printReceipt(order: Order, settings: StoreSettings) {
-  const printWindow = window.open('', '_blank', 'width=450,height=700');
-  if (!printWindow) {
-    alert('Vui lòng cho phép popup để in hóa đơn bán hàng!');
-    return;
-  }
 
   const itemsHtml = order.items.map((item, idx) => `
     <tr>
@@ -181,9 +212,7 @@ export function printReceipt(order: Order, settings: StoreSettings) {
     </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
+  showPrintDocument(html);
 }
 
 export function printFinancialSummaryPDF(
@@ -193,11 +222,6 @@ export function printFinancialSummaryPDF(
   tableRows: string[][],
   storeSettings: StoreSettings
 ) {
-  const printWindow = window.open('', '_blank', 'width=800,height=900');
-  if (!printWindow) {
-    alert('Vui lòng cho phép popup để xem báo cáo in!');
-    return;
-  }
 
   const cardsHtml = summaryItems.map(item => `
     <div style="background: ${item.highlight ? '#eff6ff' : '#f8fafc'}; border: 1px solid ${item.highlight ? '#bfdbfe' : '#e2e8f0'}; padding: 10px 14px; border-radius: 8px; flex: 1; min-width: 140px;">
@@ -283,7 +307,5 @@ export function printFinancialSummaryPDF(
     </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
+  showPrintDocument(html);
 }
