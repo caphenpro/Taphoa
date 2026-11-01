@@ -705,7 +705,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Tồn kho ban đầu</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Tồn kho ban đầu ({formUnit || "đơn vị lẻ"})</label>
                   <input
                     type="number"
                     min="0"
