@@ -130,7 +130,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setFormUnit(p.unit);
     setFormPurchaseUnit(p.purchaseUnit || p.unit);
     setFormUnitsPerPurchase(Math.max(1, p.unitsPerPurchase || 1));
-    setFormCostPrice(p.costPrice);
+    setFormCostPrice(p.costPrice * Math.max(1, p.unitsPerPurchase || 1));
     setFormSellingPrice(p.sellingPrice);
     setFormStock(p.stock);
     setFormMinStockAlert(p.minStockAlert || 5);
@@ -141,6 +141,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formCode.trim()) return;
+    const purchaseFactor = Math.max(1, Number(formUnitsPerPurchase) || 1);
+    const baseUnitCost = (Number(formCostPrice) || 0) / purchaseFactor;
 
     if (editingProduct) {
       const updated: Product = {
@@ -150,8 +152,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
         category: formCategory.trim(),
         unit: formUnit.trim(),
         purchaseUnit: formPurchaseUnit.trim() || formUnit.trim(),
-        unitsPerPurchase: Math.max(1, Number(formUnitsPerPurchase) || 1),
-        costPrice: Number(formCostPrice) || 0,
+        unitsPerPurchase: purchaseFactor,
+        costPrice: baseUnitCost,
         sellingPrice: Number(formSellingPrice) || 0,
         stock: Number(formStock) || 0,
         minStockAlert: Number(formMinStockAlert) || 5,
@@ -183,8 +185,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
         category: formCategory.trim(),
         unit: formUnit.trim(),
         purchaseUnit: formPurchaseUnit.trim() || formUnit.trim(),
-        unitsPerPurchase: Math.max(1, Number(formUnitsPerPurchase) || 1),
-        costPrice: Number(formCostPrice) || 0,
+        unitsPerPurchase: purchaseFactor,
+        costPrice: baseUnitCost,
         sellingPrice: Number(formSellingPrice) || 0,
         stock: Number(formStock) || 0,
         minStockAlert: Number(formMinStockAlert) || 5,
@@ -643,6 +645,13 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
               {editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới vào danh mục'}
             </h3>
 
+              <datalist id="product-codes">{products.map(p => <option key={p.id} value={p.code} />)}</datalist>
+              <datalist id="product-names">{products.map(p => <option key={p.id} value={p.name} />)}</datalist>
+              <datalist id="product-categories">{categories.filter(c => c !== 'all').map(c => <option key={c} value={c} />)}</datalist>
+              <datalist id="retail-units">{Array.from(new Set(products.map(p => p.unit).filter(Boolean))).map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="purchase-units">{Array.from(new Set(products.map(p => p.purchaseUnit || p.unit).filter(Boolean))).map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="supplier-names">{Array.from(new Set(transactions.map(t => t.supplierName).filter(Boolean) as string[])).map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="inventory-notes">{Array.from(new Set(transactions.map(t => t.note).filter(Boolean) as string[])).map(v => <option key={v} value={v} />)}</datalist>
             <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -651,6 +660,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                     type="text"
                     required
                     value={formCode}
+                    list="product-codes"
                     onChange={e => setFormCode(e.target.value)}
                     placeholder="Quét mã vạch hoặc tự sinh"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
@@ -661,6 +671,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <input
                     type="text"
                     value={formCategory}
+                    list="product-categories"
                     onChange={e => setFormCategory(e.target.value)}
                     placeholder="VD: Gia vị, Bánh kẹo, Nước ngọt..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-medium"
@@ -674,6 +685,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   type="text"
                   required
                   value={formName}
+                  list="product-names"
                   onChange={e => setFormName(e.target.value)}
                   placeholder="VD: Nước mắm Chinsu chai 500ml"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold"
@@ -686,6 +698,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <input
                     type="text"
                     value={formUnit}
+                    list="retail-units"
                     onChange={e => setFormUnit(e.target.value)}
                     placeholder="kg, gói, chai..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -716,17 +729,21 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Đơn vị nhập sỉ</label>
-                  <input type="text" value={formPurchaseUnit} onChange={e => setFormPurchaseUnit(e.target.value)} placeholder="thùng, cây, bao..." className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
+                  <input type="text" value={formPurchaseUnit} list="purchase-units" onChange={e => setFormPurchaseUnit(e.target.value)} placeholder="thùng, cây, bao..." className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
                 </div>
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Số {formUnit || 'đơn vị bán'} trong 1 {formPurchaseUnit || 'đơn vị nhập'}</label>
-                  <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => setFormUnitsPerPurchase(Number(e.target.value) || 1)} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
+                  <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => {
+                      const nextFactor = Math.max(1, Number(e.target.value) || 1);
+                      setFormUnitsPerPurchase(nextFactor);
+                      setFormSellingPrice(suggestRetailPrice((Number(formCostPrice) || 0) / nextFactor));
+                    }} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500">Ví dụ: mì bán theo gói, nhập theo thùng 30 gói. Đường bán theo kg, nhập theo cây 12 kg. Giá bán gợi ý = giá vốn + 15%, làm tròn lên 1.000đ; có thể sửa lại.</p>
+              <p className="text-[11px] text-slate-500">Nhập giá theo {formPurchaseUnit || 'đơn vị nhập'}. Hệ thống tự chia {Math.max(1, formUnitsPerPurchase || 1)} {formUnit || 'đơn vị lẻ'} để tính giá vốn mỗi {formUnit || 'đơn vị lẻ'}: {formatVND((Number(formCostPrice) || 0) / Math.max(1, formUnitsPerPurchase || 1))}. Giá bán gợi ý = giá vốn lẻ + 15%, làm tròn lên 1.000đ.</p>
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Giá vốn mỗi {formUnit || 'đơn vị bán'} (VNĐ)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Giá nhập mỗi {formPurchaseUnit || 'đơn vị nhập'} (VNĐ)</label>
                   <input
                     type="number"
                     min="0"
@@ -734,7 +751,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                     onChange={e => {
                       const nextCost = Number(e.target.value) || 0;
                       setFormCostPrice(nextCost);
-                      setFormSellingPrice(suggestRetailPrice(nextCost));
+                      setFormSellingPrice(suggestRetailPrice(nextCost / Math.max(1, formUnitsPerPurchase)));
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800"
                   />
@@ -847,6 +864,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                       type="text"
                       placeholder="VD: NPP Tiến Thành"
                       value={supplierName}
+                      list="supplier-names"
                       onChange={e => setSupplierName(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     />
@@ -860,6 +878,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   type="text"
                   placeholder="VD: Hàng móp méo, cận date..."
                   value={stockNote}
+                  list="inventory-notes"
                   onChange={e => setStockNote(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 />
