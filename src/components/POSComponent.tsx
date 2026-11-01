@@ -609,12 +609,12 @@ export const POSComponent: React.FC<POSProps> = ({
                     <Minus className="w-3 h-3" />
                   </button>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0.001"
                     step="0.001"
                     value={item.quantity}
                     aria-label={`Số lượng ${item.name}`}
-                    onChange={e => setItemQuantity(item.productId, Number(e.target.value))}
+                    onChange={e => setItemQuantity(item.productId, (e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-16 px-1 py-1 text-xs font-bold text-center bg-white border-x border-slate-200"
                   />
                   <button
@@ -672,11 +672,11 @@ export const POSComponent: React.FC<POSProps> = ({
                 </button>
               </div>
               <input
-                type="number"
+                type="number" onFocus={e => e.currentTarget.select()}
                 min="0"
                 value={orderDiscountValue === 0 ? '' : orderDiscountValue}
                 placeholder="0"
-                onChange={e => setOrderDiscountValue(Number(e.target.value) || 0)}
+                onChange={e => setOrderDiscountValue((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                 className="w-20 px-2 py-1 text-right bg-white border border-slate-300 rounded focus:ring-1 focus:ring-sky-500 font-semibold"
               />
             </div>
@@ -754,12 +754,12 @@ export const POSComponent: React.FC<POSProps> = ({
               <span className="font-medium text-slate-700">Khách đưa / Thanh toán:</span>
               <div className="relative">
                 <input
-                  type="number"
+                  type="number" onFocus={e => e.currentTarget.select()}
                   min="0"
                   value={isAmountManuallySet ? amountPaid : finalTotal}
                   onChange={e => {
                     setIsAmountManuallySet(true);
-                    setAmountPaid(Number(e.target.value) || 0);
+                    setAmountPaid((e.target.value === '' ? ('' as any) : Number(e.target.value)));
                   }}
                   className="w-32 px-2 py-1 text-right font-bold text-slate-900 border border-slate-300 rounded focus:ring-1 focus:ring-sky-500 bg-white"
                 />
@@ -852,9 +852,9 @@ export const POSComponent: React.FC<POSProps> = ({
                 <p className="text-[11px] text-slate-500 mb-1">Có thể sửa giá riêng cho đơn này; chỉ lưu vào giá niêm yết nếu chọn ô bên dưới.</p>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     value={editPrice}
-                    onChange={e => setEditPrice(Number(e.target.value) || 0)}
+                    onChange={e => setEditPrice((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">VNĐ</span>
@@ -881,10 +881,10 @@ export const POSComponent: React.FC<POSProps> = ({
                     </button>
                   </div>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={editDiscountValue}
-                    onChange={e => setEditDiscountValue(Number(e.target.value) || 0)}
+                    onChange={e => setEditDiscountValue((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     placeholder="Nhập mức giảm"
                     className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg font-semibold"
                   />
@@ -967,22 +967,22 @@ export const POSComponent: React.FC<POSProps> = ({
                   <input value={quickProductUnit} onChange={e => setQuickProductUnit(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="cái, chai, gói..." />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Tồn kho ban đầu</label>
-                  <input type="number" min="0" value={quickProductStock} onChange={e => setQuickProductStock(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                  <label className="block font-semibold text-slate-700 mb-1">Lượng nhập ban đầu</label>
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductStock} onChange={e => setQuickProductStock((e.target.value === '' ? ('' as any) : Number(e.target.value)))} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Giá vốn (VNĐ)</label>
-                  <input type="number" min="0" value={quickProductCost} onChange={e => {
-                      const nextCost = Number(e.target.value) || 0;
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductCost} onChange={e => {
+                      const nextCost = (e.target.value === '' ? ('' as any) : Number(e.target.value));
                       setQuickProductCost(nextCost);
                       setQuickProductPrice(suggestRetailPrice(nextCost));
                     }} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Giá bán gợi ý (VNĐ)</label>
-                  <input type="number" min="0" value={quickProductPrice} onChange={e => setQuickProductPrice(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductPrice} onChange={e => setQuickProductPrice((e.target.value === '' ? ('' as any) : Number(e.target.value)))} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
