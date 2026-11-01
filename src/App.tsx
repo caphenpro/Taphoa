@@ -11,19 +11,21 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldCheck,
-  History
+  History,
+  Truck
 } from 'lucide-react';
-import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry } from './types';
+import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry, SupplierDebt, SupplierPayment } from './types';
 import { loadAppState, saveAppState } from './utils/storage';
 import { POSComponent } from './components/POSComponent';
 import { InventoryComponent } from './components/InventoryComponent';
 import { CustomersAndDebtComponent } from './components/CustomersAndDebtComponent';
 import { FinancialReportsComponent } from './components/FinancialReportsComponent';
 import { SyncAndSettingsComponent } from './components/SyncAndSettingsComponent';
+import { SupplierDebtComponent } from './components/SupplierDebtComponent';
 
 export default function App() {
   const [appState, setAppState] = useState<AppStateData>(() => loadAppState());
-  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync' | 'prices'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync' | 'prices' | 'supplierDebts'>('pos');
 
   // Sync state to local storage whenever modified
   useEffect(() => {
@@ -128,10 +130,47 @@ export default function App() {
   };
 
   const handleStockTransaction = (trans: InventoryTransaction) => {
-    setAppState(prev => ({
-      ...prev,
-      inventoryTransactions: [trans, ...prev.inventoryTransactions],
-    }));
+    setAppState(prev => {
+      const totalAmount = trans.type === 'import' ? (trans.totalValue || 0) : 0;
+      const paidAmount = Math.max(0, Math.min(totalAmount, trans.supplierPaidAmount || 0));
+      const supplierDebt: SupplierDebt | null = trans.type === 'import' && trans.supplierName?.trim() ? {
+        id: 'supdebt-' + trans.id,
+        date: trans.date,
+        supplierName: trans.supplierName.trim(),
+        totalAmount,
+        paidAmount,
+        remainingAmount: totalAmount - paidAmount,
+        inventoryTransactionId: trans.id,
+        note: trans.note,
+      } : null;
+      return {
+        ...prev,
+        inventoryTransactions: [trans, ...prev.inventoryTransactions],
+        supplierDebts: supplierDebt ? [supplierDebt, ...(prev.supplierDebts || [])] : (prev.supplierDebts || []),
+      };
+    });
+  };
+
+  const handleSupplierPayment = (debtId: string, amount: number, note: string) => {
+    setAppState(prev => {
+      const debt = (prev.supplierDebts || []).find(d => d.id === debtId);
+      if (!debt || amount <= 0 || amount > debt.remainingAmount) return prev;
+      const payment: SupplierPayment = {
+        id: 'suppay-' + Date.now(),
+        date: new Date().toISOString(),
+        supplierDebtId: debtId,
+        supplierName: debt.supplierName,
+        amount,
+        note,
+      };
+      return {
+        ...prev,
+        supplierDebts: prev.supplierDebts.map(d => d.id === debtId ? {
+          ...d, paidAmount: d.paidAmount + amount, remainingAmount: Math.max(0, d.remainingAmount - amount),
+        } : d),
+        supplierPayments: [payment, ...(prev.supplierPayments || [])],
+      };
+    });
   };
 
   // Customers CRUD & Debt
@@ -269,7 +308,21 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab('reports')}
+            onClick={() => setActiveTab('supplierDebts')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
+              activeTab === 'supplierDebts'
+                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
+                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
+            }`}
+          >
+            <Truck className="w-4 h-4" /> Nợ nhà cung cấp
+            {(appState.supplierDebts || []).some(d => d.remainingAmount > 0) && (
+              <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-300 rounded text-[10px] font-bold">Còn nợ</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reports')
             className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
               activeTab === 'reports'
                 ? 'border-sky-400 text-sky-400 bg-slate-800/60'
@@ -338,6 +391,14 @@ export default function App() {
             onAddCustomer={handleAddCustomer}
             onUpdateCustomer={handleUpdateCustomer}
             onRecordDebtPayment={handleRecordDebtPayment}
+          />
+        )}
+
+        {activeTab === 'supplierDebts' && (
+          <SupplierDebtComponent
+            debts={appState.supplierDebts || []}
+            payments={appState.supplierPayments || []}
+            onRecordPayment={handleSupplierPayment}
           />
         )}
 
