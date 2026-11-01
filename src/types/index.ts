@@ -70,6 +70,8 @@ export interface Order {
   cashAmount?: number; // nếu trả tiền mặt
   transferAmount?: number; // nếu chuyển khoản
   debtAmount: number; // nợ phát sinh từ đơn này (finalTotal - amountPaid)
+  previousDebt?: number; // tổng nợ khách trước khi lập đơn
+  totalDebtAfterOrder?: number; // tổng nợ khách sau khi cộng nợ đơn này
   pointsEarned: number; // điểm được tích từ đơn này
   pointsRedeemed?: number; // điểm đã dùng trừ tiền (nếu có)
   pointsDiscountAmount?: number;
