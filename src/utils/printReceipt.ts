@@ -37,7 +37,7 @@ function showPrintDocument(html: string) {
   frame.srcdoc = html;
 }
 
-export function printReceipt(order: Order, settings: StoreSettings) {
+export function buildReceiptHtml(order: Order, settings: StoreSettings): string {
 
   const itemsHtml = order.items.map((item, idx) => `
     <tr>
@@ -212,7 +212,11 @@ export function printReceipt(order: Order, settings: StoreSettings) {
     </html>
   `;
 
-  showPrintDocument(html);
+  return html;
+}
+
+export function printReceipt(order: Order, settings: StoreSettings) {
+  showPrintDocument(buildReceiptHtml(order, settings));
 }
 
 export function printFinancialSummaryPDF(
