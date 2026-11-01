@@ -61,6 +61,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formUnit, setFormUnit] = useState('gói');
+  const [formPurchaseUnit, setFormPurchaseUnit] = useState('thùng');
+  const [formUnitsPerPurchase, setFormUnitsPerPurchase] = useState<number>(1);
   const [formCostPrice, setFormCostPrice] = useState<number>(0);
   const [formSellingPrice, setFormSellingPrice] = useState<number>(0);
   const [formStock, setFormStock] = useState<number>(0);
@@ -107,7 +109,9 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setFormCode(String(Math.floor(1000000000000 + Math.random() * 9000000000000)));
     setFormName('');
     setFormCategory('Hàng tổng hợp');
-    setFormUnit('cái');
+    setFormUnit('gói');
+    setFormPurchaseUnit('thùng');
+    setFormUnitsPerPurchase(1);
     setFormCostPrice(0);
     setFormSellingPrice(0);
     setFormStock(0);
@@ -122,6 +126,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setFormName(p.name);
     setFormCategory(p.category);
     setFormUnit(p.unit);
+    setFormPurchaseUnit(p.purchaseUnit || p.unit);
+    setFormUnitsPerPurchase(Math.max(1, p.unitsPerPurchase || 1));
     setFormCostPrice(p.costPrice);
     setFormSellingPrice(p.sellingPrice);
     setFormStock(p.stock);
@@ -141,6 +147,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
         name: formName.trim(),
         category: formCategory.trim(),
         unit: formUnit.trim(),
+        purchaseUnit: formPurchaseUnit.trim() || formUnit.trim(),
+        unitsPerPurchase: Math.max(1, Number(formUnitsPerPurchase) || 1),
         costPrice: Number(formCostPrice) || 0,
         sellingPrice: Number(formSellingPrice) || 0,
         stock: Number(formStock) || 0,
@@ -172,6 +180,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
         name: formName.trim(),
         category: formCategory.trim(),
         unit: formUnit.trim(),
+        purchaseUnit: formPurchaseUnit.trim() || formUnit.trim(),
+        unitsPerPurchase: Math.max(1, Number(formUnitsPerPurchase) || 1),
         costPrice: Number(formCostPrice) || 0,
         sellingPrice: Number(formSellingPrice) || 0,
         stock: Number(formStock) || 0,
@@ -232,7 +242,10 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       return;
     }
 
-    let delta = stockChangeQty;
+    const packFactor = Math.max(1, targetProduct.unitsPerPurchase || 1);
+    const importedBaseQuantity = stockChangeQty * packFactor;
+    const importUnitCost = stockUnitCost / packFactor;
+    let delta = stockModalType === 'import' ? importedBaseQuantity : stockChangeQty;
     if (stockModalType === 'export_damage') {
       delta = -stockChangeQty;
     } else if (stockModalType === 'stock_adjustment') {
@@ -244,7 +257,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       ...targetProduct,
       stock: newStock,
       costPrice: stockModalType === 'import' && newStock > 0
-        ? ((targetProduct.stock * targetProduct.costPrice) + (stockChangeQty * stockUnitCost)) / newStock
+        ? ((targetProduct.stock * targetProduct.costPrice) + (importedBaseQuantity * importUnitCost)) / newStock
         : targetProduct.costPrice,
       updatedAt: new Date().toISOString(),
     };
@@ -261,8 +274,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       productCode: targetProduct.code,
       quantityChange: delta,
       unit: targetProduct.unit,
-      costPrice: stockUnitCost,
-      totalValue: Math.abs(delta) * (stockModalType === 'import' ? stockUnitCost : (stockUnitCost || targetProduct.costPrice)),
+      costPrice: stockModalType === 'import' ? importUnitCost : stockUnitCost,
+      totalValue: stockModalType === 'import' ? stockChangeQty * stockUnitCost : Math.abs(delta) * (stockUnitCost || targetProduct.costPrice),
       supplierName: supplierName.trim(),
       supplierPaidAmount: stockModalType === 'import' ? Math.max(0, Math.min(stockChangeQty * stockUnitCost, supplierPaidAmount)) : 0,
       note: stockNote.trim() || (stockModalType === 'import' ? 'Nhập hàng vào kho' : 'Xuất hỏng/điều chỉnh'),
@@ -663,12 +676,12 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Đơn vị tính</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Đơn vị bán lẻ</label>
                   <input
                     type="text"
                     value={formUnit}
                     onChange={e => setFormUnit(e.target.value)}
-                    placeholder="gói, chai, lon, kg..."
+                    placeholder="kg, gói, chai..."
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                   />
                 </div>
@@ -694,6 +707,17 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Đơn vị nhập sỉ</label>
+                  <input type="text" value={formPurchaseUnit} onChange={e => setFormPurchaseUnit(e.target.value)} placeholder="thùng, cây, bao..." className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Số {formUnit || 'đơn vị bán'} trong 1 {formPurchaseUnit || 'đơn vị nhập'}</label>
+                  <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => setFormUnitsPerPurchase(Number(e.target.value) || 1)} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500">Ví dụ: nhập theo thùng, 1 thùng có 30 gói; hoặc nhập theo cây, 1 cây có 12 kg.</p>
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Giá vốn nhập hàng (VNĐ)</label>
@@ -768,7 +792,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
             <form onSubmit={handleConfirmStock} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  {stockModalType === 'stock_adjustment' ? 'Số lượng tồn thực tế sau kiểm kê' : 'Số lượng'}
+                  {stockModalType === 'stock_adjustment' ? `Tồn thực tế (${targetProduct?.unit || ''})` : stockModalType === 'import' ? `Số ${targetProduct?.purchaseUnit || targetProduct?.unit || 'đơn vị nhập'} nhập` : `Số lượng (${targetProduct?.unit || ''})`}
                 </label>
                 <input
                   type="number"
@@ -788,7 +812,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
               {stockModalType === 'import' && (
                 <>
                   <div>
-                    <label className="block text-slate-700 font-semibold mb-1">Giá vốn đợt nhập này (VNĐ)</label>
+                    <label className="block text-slate-700 font-semibold mb-1">Giá nhập mỗi {targetProduct?.purchaseUnit || targetProduct?.unit || 'đơn vị'} (VNĐ)</label>
                     <input
                       type="number"
                       min="0"
@@ -805,7 +829,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">Đã thanh toán đợt nhập (VNĐ)</label>
                     <input type="number" min="0" max={stockChangeQty * stockUnitCost} value={supplierPaidAmount} onChange={e => setSupplierPaidAmount(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold" />
-                    <p className="text-[11px] text-slate-500 mt-1">Tổng tiền nhập: {formatVND(stockChangeQty * stockUnitCost)} · Còn nợ: {formatVND(Math.max(0, stockChangeQty * stockUnitCost - supplierPaidAmount))}</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Quy đổi: {stockChangeQty * Math.max(1, targetProduct?.unitsPerPurchase || 1)} {targetProduct?.unit} · Giá vốn mỗi {targetProduct?.unit}: {formatVND(stockUnitCost / Math.max(1, targetProduct?.unitsPerPurchase || 1))}<br/>Tổng tiền nhập: {formatVND(stockChangeQty * stockUnitCost)} · Còn nợ: {formatVND(Math.max(0, stockChangeQty * stockUnitCost - supplierPaidAmount))}</p>
                   </div>
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">Nhà cung cấp / Đại lý sỉ</label>
