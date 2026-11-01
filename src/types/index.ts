@@ -17,7 +17,7 @@ export interface Product {
   unit: string; // Đơn vị bán lẻ / đơn vị tồn kho nhỏ nhất
   purchaseUnit?: string; // Đơn vị nhập sỉ: thùng, cây, bao...
   unitsPerPurchase?: number; // Số đơn vị bán lẻ trong một đơn vị nhập sỉ
-  costPrice: number; // giá vốn nhập hàng
+  costPrice: number; // Giá vốn trên một đơn vị tồn kho/bán lẻ nhỏ nhất
   sellingPrice: number; // giá bán niêm yết
   stock: number; // số lượng tồn hiện tại
   minStockAlert?: number; // ngưỡng cảnh báo sắp hết hàng
