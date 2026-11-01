@@ -118,7 +118,7 @@ export const POSComponent: React.FC<POSProps> = ({
   }, [cart]);
 
   const totalCost = useMemo(() => {
-    return cart.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+    return cart.reduce((sum, item) => sum + (item.costPrice * item.quantity * (item.unitsPerSale || 1)), 0);
   }, [cart]);
 
   // Order level discount amount
@@ -177,6 +177,8 @@ export const POSComponent: React.FC<POSProps> = ({
           code: product.code,
           name: product.name,
           unit: product.unit,
+          baseUnit: product.unit,
+          unitsPerSale: 1,
           costPrice: product.costPrice,
           originalPrice: product.sellingPrice,
           customPrice: product.sellingPrice,
@@ -223,6 +225,25 @@ export const POSComponent: React.FC<POSProps> = ({
     }));
   };
 
+  const changeSaleUnit = (productId: string, usePurchaseUnit: boolean) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    const factor = usePurchaseUnit ? Math.max(1, product.unitsPerPurchase || 1) : 1;
+    const saleUnit = usePurchaseUnit ? (product.purchaseUnit || product.unit) : product.unit;
+    setCart(prev => prev.map(item => item.productId === productId ? {
+      ...item,
+      unit: saleUnit,
+      baseUnit: product.unit,
+      unitsPerSale: factor,
+      quantity: 1,
+      originalPrice: product.sellingPrice * factor,
+      customPrice: product.sellingPrice * factor,
+      discountType: 'fixed',
+      discountValue: 0,
+      subtotal: product.sellingPrice * factor,
+    } : item));
+  };
+
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(i => i.productId !== productId));
   };
@@ -237,7 +258,7 @@ export const POSComponent: React.FC<POSProps> = ({
 
   const saveItemEditor = () => {
     if (!editingItem) return;
-    if (updateCatalogPrice && editPrice !== editingItem.originalPrice) {
+    if (updateCatalogPrice && (editingItem.unitsPerSale || 1) === 1 && editPrice !== editingItem.originalPrice) {
       onUpdateSellingPrice(editingItem.productId, editPrice, 'Điều chỉnh giá bán tại POS');
     }
     setCart(prev =>
@@ -266,7 +287,7 @@ export const POSComponent: React.FC<POSProps> = ({
 
     const insufficient = cart.find(item => {
       const product = products.find(p => p.id === item.productId);
-      return !product || item.quantity > product.stock;
+      return !product || item.quantity * (item.unitsPerSale || 1) > product.stock;
     });
     if (insufficient) {
       const product = products.find(p => p.id === insufficient.productId);
@@ -363,6 +384,8 @@ export const POSComponent: React.FC<POSProps> = ({
       name,
       category: quickProductCategory.trim() || 'Chưa phân loại',
       unit: quickProductUnit.trim() || 'cái',
+      purchaseUnit: quickProductUnit.trim() || 'cái',
+      unitsPerPurchase: 1,
       costPrice: Math.max(0, quickProductCost),
       sellingPrice: Math.max(0, quickProductPrice),
       stock: Math.max(0, quickProductStock),
