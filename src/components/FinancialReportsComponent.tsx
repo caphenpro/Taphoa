@@ -96,7 +96,7 @@ export const FinancialReportsComponent: React.FC<FinancialReportsProps> = ({
       { label: 'Số đơn bán ra', value: `${filteredOrders.length} đơn` },
       { label: 'TỔNG DOANH THU', value: formatVND(totalRevenue), highlight: true },
       { label: 'Tiền vốn hàng bán', value: formatVND(totalCost) },
-      { label: 'LỢI NHUẬN RÒNG', value: formatVND(totalProfit), highlight: true },
+      { label: 'LÃI GỘP', value: formatVND(totalProfit), highlight: true },
       { label: 'Tỷ suất sinh lời', value: `${profitMargin}%` },
     ];
 
@@ -182,7 +182,7 @@ export const FinancialReportsComponent: React.FC<FinancialReportsProps> = ({
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs text-slate-500 font-medium">LỢI NHUẬN RÒNG (LÃI)</div>
+          <div className="text-xs text-slate-500 font-medium">LÃI GỘP TỪ BÁN HÀNG</div>
           <div className="text-xl md:text-2xl font-bold text-emerald-600 mt-1">
             {formatVND(totalProfit)}
           </div>
