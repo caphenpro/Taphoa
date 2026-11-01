@@ -11,19 +11,21 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldCheck,
-  History
+  History,
+  Truck
 } from 'lucide-react';
-import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry } from './types';
+import { AppStateData, Order, Product, Customer, InventoryTransaction, DebtPayment, StoreSettings, PriceHistoryEntry, SupplierDebt, SupplierPayment } from './types';
 import { loadAppState, saveAppState } from './utils/storage';
 import { POSComponent } from './components/POSComponent';
 import { InventoryComponent } from './components/InventoryComponent';
 import { CustomersAndDebtComponent } from './components/CustomersAndDebtComponent';
 import { FinancialReportsComponent } from './components/FinancialReportsComponent';
 import { SyncAndSettingsComponent } from './components/SyncAndSettingsComponent';
+import { SupplierDebtComponent } from './components/SupplierDebtComponent';
 
 export default function App() {
   const [appState, setAppState] = useState<AppStateData>(() => loadAppState());
-  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync' | 'prices'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'inventory' | 'debts' | 'reports' | 'sync' | 'prices' | 'supplierDebts'>('pos');
 
   // Sync state to local storage whenever modified
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function App() {
         if (cartItem) {
           return {
             ...prod,
-            stock: Math.max(0, prod.stock - cartItem.quantity),
+            stock: Math.max(0, prod.stock - cartItem.quantity * (cartItem.unitsPerSale || 1)),
             updatedAt: new Date().toISOString(),
           };
         }
@@ -65,12 +67,12 @@ export default function App() {
         productId: item.productId,
         productName: item.name,
         productCode: item.code,
-        quantityChange: -item.quantity,
-        unit: item.unit,
+        quantityChange: -(item.quantity * (item.unitsPerSale || 1)),
+        unit: item.baseUnit || item.unit,
         costPrice: item.costPrice,
-        totalValue: item.costPrice * item.quantity,
+        totalValue: item.costPrice * item.quantity * (item.unitsPerSale || 1),
         referenceOrderNumber: order.orderNumber,
-        note: `Bán lẻ theo đơn ${order.orderNumber}`,
+        note: `Bán ${item.quantity} ${item.unit} theo đơn ${order.orderNumber}`,
       }));
 
       return {
@@ -128,10 +130,60 @@ export default function App() {
   };
 
   const handleStockTransaction = (trans: InventoryTransaction) => {
-    setAppState(prev => ({
-      ...prev,
-      inventoryTransactions: [trans, ...prev.inventoryTransactions],
-    }));
+    setAppState(prev => {
+      const totalAmount = trans.type === 'import' ? (trans.totalValue || 0) : 0;
+      const paidAmount = Math.max(0, Math.min(totalAmount, trans.supplierPaidAmount || 0));
+      const supplierDebt: SupplierDebt | null = trans.type === 'import' && trans.supplierName?.trim() ? {
+        id: 'supdebt-' + trans.id,
+        date: trans.date,
+        supplierName: trans.supplierName.trim(),
+        totalAmount,
+        paidAmount,
+        remainingAmount: totalAmount - paidAmount,
+        inventoryTransactionId: trans.id,
+        note: trans.note,
+      } : null;
+      return {
+        ...prev,
+        inventoryTransactions: [trans, ...prev.inventoryTransactions],
+        supplierDebts: supplierDebt ? [supplierDebt, ...(prev.supplierDebts || [])] : (prev.supplierDebts || []),
+      };
+    });
+  };
+
+  const handleAddSupplierDebt = (supplierName: string, amount: number, note: string) => {
+    const debt: SupplierDebt = {
+      id: 'supdebt-manual-' + Date.now(),
+      date: new Date().toISOString(),
+      supplierName,
+      totalAmount: amount,
+      paidAmount: 0,
+      remainingAmount: amount,
+      note: note || 'Ghi nợ đầu kỳ',
+    };
+    setAppState(prev => ({ ...prev, supplierDebts: [debt, ...(prev.supplierDebts || [])] }));
+  };
+
+  const handleSupplierPayment = (debtId: string, amount: number, note: string) => {
+    setAppState(prev => {
+      const debt = (prev.supplierDebts || []).find(d => d.id === debtId);
+      if (!debt || amount <= 0 || amount > debt.remainingAmount) return prev;
+      const payment: SupplierPayment = {
+        id: 'suppay-' + Date.now(),
+        date: new Date().toISOString(),
+        supplierDebtId: debtId,
+        supplierName: debt.supplierName,
+        amount,
+        note,
+      };
+      return {
+        ...prev,
+        supplierDebts: prev.supplierDebts.map(d => d.id === debtId ? {
+          ...d, paidAmount: d.paidAmount + amount, remainingAmount: Math.max(0, d.remainingAmount - amount),
+        } : d),
+        supplierPayments: [payment, ...(prev.supplierPayments || [])],
+      };
+    });
   };
 
   // Customers CRUD & Debt
@@ -159,8 +211,15 @@ export default function App() {
 
   // Settings & Restore
   const handleRestoreState = (newState: AppStateData) => {
-    setAppState(newState);
-    saveAppState(newState);
+    const safeState: AppStateData = {
+      ...newState,
+      supplierDebts: newState.supplierDebts || [],
+      supplierPayments: newState.supplierPayments || [],
+      priceHistory: newState.priceHistory || [],
+      debtPayments: newState.debtPayments || [],
+    };
+    setAppState(safeState);
+    saveAppState(safeState);
   };
 
   const handleUpdateSettings = (newSettings: StoreSettings) => {
@@ -223,83 +282,25 @@ export default function App() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex px-2 md:px-4 gap-1 overflow-x-auto border-t border-slate-800 text-xs">
-          <button
-            onClick={() => setActiveTab('pos')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
-              activeTab === 'pos'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" /> Bán Hàng (POS)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap relative ${
-              activeTab === 'inventory'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <Package className="w-4 h-4" /> Xuất Nhập Tồn Kho
-            {lowStockCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center">
-                {lowStockCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('debts')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
-              activeTab === 'debts'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <Users className="w-4 h-4" /> Sổ Nợ & Khách Thân Thiết
-            {debtorsCount > 0 && (
-              <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-400/40 rounded text-[10px] font-bold">
-                {debtorsCount} nợ
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
-              activeTab === 'reports'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" /> Doanh Thu & Lợi Nhuận
-          </button>
-
-          <button
-            onClick={() => setActiveTab('sync')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
-              activeTab === 'sync'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <Settings className="w-4 h-4" /> Cài Đặt & Đồng Bộ
-          </button>
-
-          <button
-            onClick={() => setActiveTab('prices')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
-              activeTab === 'prices'
-                ? 'border-sky-400 text-sky-400 bg-slate-800/60'
-                : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/30'
-            }`}
-          >
-            <History className="w-4 h-4" /> Lịch sử giá
-          </button>
+        {/* Main navigation: four clear tasks for a small shop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 bg-slate-900">
+          {[
+            { id: 'pos', label: 'BÁN HÀNG', icon: <ShoppingCart className="w-6 h-6"/> },
+            { id: 'inventory', label: 'HÀNG HÓA', icon: <Package className="w-6 h-6"/> },
+            { id: 'debts', label: 'SỔ CÔNG NỢ', icon: <Users className="w-6 h-6"/> },
+            { id: 'reports', label: 'THU CHI – LÃI LỖ', icon: <BarChart3 className="w-6 h-6"/> },
+          ].map(item => (
+            <button key={item.id} onClick={() => setActiveTab(item.id as typeof activeTab)}
+              className={`min-h-16 rounded-xl px-3 py-3 flex items-center justify-center gap-2 text-sm md:text-base font-extrabold border-2 transition ${activeTab === item.id ? 'bg-sky-600 border-sky-300 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'}`}>
+              {item.icon}<span>{item.label}</span>
+              {item.id === 'inventory' && lowStockCount > 0 && <span className="rounded-full bg-rose-500 text-white px-2 py-0.5 text-xs">{lowStockCount}</span>}
+              {item.id === 'debts' && (debtorsCount + (appState.supplierDebts || []).filter(d => d.remainingAmount > 0).length) > 0 && <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-xs">{debtorsCount + (appState.supplierDebts || []).filter(d => d.remainingAmount > 0).length}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-4 px-4 py-2 bg-slate-800 text-xs">
+          <button onClick={() => setActiveTab('prices')} className="text-slate-300 underline">Lịch sử giá</button>
+          <button onClick={() => setActiveTab('sync')} className="text-slate-300 underline">Sao lưu & cài đặt</button>
         </div>
       </header>
 

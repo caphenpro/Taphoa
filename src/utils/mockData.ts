@@ -333,5 +333,7 @@ export const initialData: AppStateData = {
       note: 'Trả bớt nợ lần trước'
     }
   ],
+  supplierDebts: [],
+  supplierPayments: [],
   lastBackupDate: undefined
 };

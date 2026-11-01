@@ -20,6 +20,8 @@ export function loadAppState(): AppStateData {
       orders: parsed.orders || initialData.orders,
       inventoryTransactions: parsed.inventoryTransactions || initialData.inventoryTransactions,
       debtPayments: parsed.debtPayments || initialData.debtPayments,
+      supplierDebts: parsed.supplierDebts || [],
+      supplierPayments: parsed.supplierPayments || [],
       priceHistory: parsed.priceHistory || [],
     };
   } catch (err) {

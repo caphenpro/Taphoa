@@ -1,19 +1,50 @@
 import { Order, StoreSettings } from '../types';
 import { formatVND, formatDate } from './storage';
 
-export function printReceipt(order: Order, settings: StoreSettings) {
-  const printWindow = window.open('', '_blank', 'width=450,height=700');
-  if (!printWindow) {
-    alert('Vui lòng cho phép popup để in hóa đơn bán hàng!');
-    return;
-  }
+function showPrintDocument(html: string) {
+  const existing = document.getElementById('taphoa-print-overlay');
+  existing?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'taphoa-print-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;flex-direction:column;';
+  const toolbar = document.createElement('div');
+  toolbar.style.cssText = 'height:48px;min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#0f172a;color:#fff;font:14px sans-serif;';
+  const title = document.createElement('strong');
+  title.textContent = 'Bản xem trước khi in';
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;';
+  const printButton = document.createElement('button');
+  printButton.type = 'button';
+  printButton.textContent = 'In lại';
+  printButton.style.cssText = 'padding:7px 12px;border:0;border-radius:6px;background:#0284c7;color:#fff;font-weight:600;';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.textContent = 'Đóng';
+  closeButton.style.cssText = 'padding:7px 12px;border:1px solid #94a3b8;border-radius:6px;background:transparent;color:#fff;font-weight:600;';
+  actions.append(printButton, closeButton);
+  toolbar.append(title, actions);
+  const frame = document.createElement('iframe');
+  frame.title = 'Bản in';
+  frame.style.cssText = 'border:0;flex:1;width:100%;background:#fff;';
+  const close = () => overlay.remove();
+  closeButton.addEventListener('click', close);
+  printButton.addEventListener('click', () => frame.contentWindow?.print());
+  overlay.append(toolbar, frame);
+  document.body.appendChild(overlay);
+  frame.addEventListener('load', () => {
+    frame.contentWindow?.addEventListener('afterprint', close, { once: true });
+  }, { once: true });
+  frame.srcdoc = html;
+}
+
+export function buildReceiptHtml(order: Order, settings: StoreSettings): string {
 
   const itemsHtml = order.items.map((item, idx) => `
     <tr>
       <td style="padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px;">
         <div style="font-weight: 600;">${idx + 1}. ${item.name}</div>
         <div style="font-size: 11px; color: #64748b;">
-          ${item.quantity} ${item.unit} x ${formatVND(item.customPrice)}
+          ${item.quantity} ${item.unit} x ${formatVND(item.customPrice)}${(item.unitsPerSale || 1) > 1 ? `(quy đổi ${item.quantity * (item.unitsPerSale || 1)} ${item.baseUnit || "đv lẻ"})` : ""}
           ${item.discountValue > 0 ? `(Giảm ${item.discountType === 'percentage' ? item.discountValue + '%' : formatVND(item.discountValue)})` : ''}
         </div>
       </td>
@@ -24,6 +55,10 @@ export function printReceipt(order: Order, settings: StoreSettings) {
   `).join('');
 
   const paymentText = order.paymentMethod === 'cash' ? 'Tiền mặt' : order.paymentMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Chia khoản';
+  const previousDebt = Math.max(0, order.previousDebt || 0);
+  const newDebt = Math.max(0, order.debtAmount || 0);
+  const totalDebtAfterOrder = Math.max(0, order.totalDebtAfterOrder ?? (previousDebt + newDebt));
+  const hasCustomerDebt = previousDebt > 0 || newDebt > 0 || totalDebtAfterOrder > 0;
 
   const html = `
     <!DOCTYPE html>
@@ -122,8 +157,8 @@ export function printReceipt(order: Order, settings: StoreSettings) {
 
         ${order.debtAmount > 0 ? `
           <div class="row" style="color: #ea580c; font-weight: bold; font-size: 13px;">
-            <span>GHI NỢ CÒN LẠI:</span>
-            <span>${formatVND(order.debtAmount)}</span>
+            <span>NỢ PHÁT SINH ĐƠN NÀY:</span>
+            <span>${formatVND(newDebt)}</span>
           </div>
         ` : `
           <div class="row" style="color: #16a34a; font-size: 12px;">
@@ -131,6 +166,21 @@ export function printReceipt(order: Order, settings: StoreSettings) {
             <span>${formatVND(Math.max(0, order.amountPaid - order.finalTotal))}</span>
           </div>
         `}
+        ${hasCustomerDebt ? `
+          <div class="divider"></div>
+          <div class="row" style="font-size: 12px;">
+            <span>Nợ cũ trước đơn:</span>
+            <span>${formatVND(previousDebt)}</span>
+          </div>
+          <div class="row" style="font-size: 12px;">
+            <span>Nợ mới của đơn:</span>
+            <span>${formatVND(newDebt)}</span>
+          </div>
+          <div class="row" style="color: #c2410c; font-weight: bold; font-size: 14px; border-top: 1px solid #fed7aa; padding-top: 5px;">
+            <span>TỔNG NỢ HIỆN TẠI:</span>
+            <span>${formatVND(totalDebtAfterOrder)}</span>
+          </div>
+        ` : ''}
 
         ${order.pointsEarned > 0 ? `
           <div style="margin-top: 6px; padding: 4px; background: #f0fdf4; border-radius: 4px; text-align: center; font-size: 11px; color: #15803d;">
@@ -162,9 +212,11 @@ export function printReceipt(order: Order, settings: StoreSettings) {
     </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
+  return html;
+}
+
+export function printReceipt(order: Order, settings: StoreSettings) {
+  showPrintDocument(buildReceiptHtml(order, settings));
 }
 
 export function printFinancialSummaryPDF(
@@ -174,11 +226,6 @@ export function printFinancialSummaryPDF(
   tableRows: string[][],
   storeSettings: StoreSettings
 ) {
-  const printWindow = window.open('', '_blank', 'width=800,height=900');
-  if (!printWindow) {
-    alert('Vui lòng cho phép popup để xem báo cáo in!');
-    return;
-  }
 
   const cardsHtml = summaryItems.map(item => `
     <div style="background: ${item.highlight ? '#eff6ff' : '#f8fafc'}; border: 1px solid ${item.highlight ? '#bfdbfe' : '#e2e8f0'}; padding: 10px 14px; border-radius: 8px; flex: 1; min-width: 140px;">
@@ -264,7 +311,5 @@ export function printFinancialSummaryPDF(
     </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
+  showPrintDocument(html);
 }

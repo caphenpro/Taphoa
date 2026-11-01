@@ -14,11 +14,13 @@ import {
   Sparkles,
   Award,
   AlertCircle,
-  PackagePlus
+  PackagePlus,
+  Share2
 } from 'lucide-react';
 import { Product, Customer, CartItem, Order, PaymentMethod, StoreSettings } from '../types';
 import { formatVND, generateOrderNumber } from '../utils/storage';
 import { printReceipt } from '../utils/printReceipt';
+import { shareReceiptImage } from '../utils/shareReceiptImage';
 import confetti from 'canvas-confetti';
 
 interface POSProps {
@@ -31,6 +33,8 @@ interface POSProps {
   onAddQuickCustomer: (customer: Customer) => void;
 }
 
+const suggestRetailPrice = (unitCost: number) => unitCost > 0 ? Math.ceil((unitCost * 1.15) / 1000) * 1000 : 0;
+
 export const POSComponent: React.FC<POSProps> = ({
   products,
   customers,
@@ -41,7 +45,6 @@ export const POSComponent: React.FC<POSProps> = ({
   onAddQuickCustomer,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // Customer selection
@@ -67,6 +70,7 @@ export const POSComponent: React.FC<POSProps> = ({
 
   // Success modal state
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [isSharingReceipt, setIsSharingReceipt] = useState(false);
 
   // Item customization modal
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
@@ -85,26 +89,15 @@ export const POSComponent: React.FC<POSProps> = ({
   const [quickProductPrice, setQuickProductPrice] = useState(0);
   const [quickProductStock, setQuickProductStock] = useState(0);
 
-  // Categories list
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach(p => {
-      if (p.category) set.add(p.category);
-    });
-    return ['all', ...Array.from(set)];
-  }, [products]);
-
   // Filtered products
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchSearch =
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
-      return matchSearch && matchCat;
+        p.code.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchSearch;
     });
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm]);
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId);
@@ -116,7 +109,7 @@ export const POSComponent: React.FC<POSProps> = ({
   }, [cart]);
 
   const totalCost = useMemo(() => {
-    return cart.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+    return cart.reduce((sum, item) => sum + (item.costPrice * item.quantity * (item.unitsPerSale || 1)), 0);
   }, [cart]);
 
   // Order level discount amount
@@ -175,6 +168,8 @@ export const POSComponent: React.FC<POSProps> = ({
           code: product.code,
           name: product.name,
           unit: product.unit,
+          baseUnit: product.unit,
+          unitsPerSale: 1,
           costPrice: product.costPrice,
           originalPrice: product.sellingPrice,
           customPrice: product.sellingPrice,
@@ -210,6 +205,36 @@ export const POSComponent: React.FC<POSProps> = ({
     });
   };
 
+  const setItemQuantity = (productId: string, quantity: number) => {
+    if (!Number.isFinite(quantity) || quantity < 0) return;
+    setCart(prev => prev.map(item => {
+      if (item.productId !== productId) return item;
+      const singleAfterDisc = item.discountType === 'percentage'
+        ? Math.round(item.customPrice * (1 - item.discountValue / 100))
+        : Math.max(0, item.customPrice - item.discountValue);
+      return { ...item, quantity, subtotal: Math.round(singleAfterDisc * quantity) };
+    }));
+  };
+
+  const changeSaleUnit = (productId: string, usePurchaseUnit: boolean) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    const factor = usePurchaseUnit ? Math.max(1, product.unitsPerPurchase || 1) : 1;
+    const saleUnit = usePurchaseUnit ? (product.purchaseUnit || product.unit) : product.unit;
+    setCart(prev => prev.map(item => item.productId === productId ? {
+      ...item,
+      unit: saleUnit,
+      baseUnit: product.unit,
+      unitsPerSale: factor,
+      quantity: 1,
+      originalPrice: product.sellingPrice * factor,
+      customPrice: product.sellingPrice * factor,
+      discountType: 'fixed',
+      discountValue: 0,
+      subtotal: product.sellingPrice * factor,
+    } : item));
+  };
+
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(i => i.productId !== productId));
   };
@@ -224,7 +249,7 @@ export const POSComponent: React.FC<POSProps> = ({
 
   const saveItemEditor = () => {
     if (!editingItem) return;
-    if (updateCatalogPrice && editPrice !== editingItem.originalPrice) {
+    if (updateCatalogPrice && (editingItem.unitsPerSale || 1) === 1 && editPrice !== editingItem.originalPrice) {
       onUpdateSellingPrice(editingItem.productId, editPrice, 'Điều chỉnh giá bán tại POS');
     }
     setCart(prev =>
@@ -250,6 +275,18 @@ export const POSComponent: React.FC<POSProps> = ({
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
+
+    const insufficient = cart.find(item => {
+      const product = products.find(p => p.id === item.productId);
+      return !product || item.quantity * (item.unitsPerSale || 1) > product.stock;
+    });
+    if (insufficient) {
+      const product = products.find(p => p.id === insufficient.productId);
+      alert(product
+        ? `Hàng "${product.name}" chỉ còn ${product.stock} ${product.unit}; mỗi ${insufficient.unit} quy đổi ${insufficient.unitsPerSale || 1} ${product.unit}. Vui lòng giảm số lượng trước khi thanh toán.`
+        : 'Một sản phẩm trong giỏ không còn tồn tại. Vui lòng kiểm tra lại.');
+      return;
+    }
 
     if (debtAmount > 0 && !selectedCustomer) {
       alert('Vui lòng chọn hoặc thêm thông tin Khách hàng để ghi nợ số tiền ' + formatVND(debtAmount));
@@ -279,6 +316,8 @@ export const POSComponent: React.FC<POSProps> = ({
       amountPaid: effectiveAmountPaid,
       paymentMethod,
       debtAmount,
+      previousDebt: selectedCustomer?.totalDebt || 0,
+      totalDebtAfterOrder: selectedCustomer ? selectedCustomer.totalDebt + debtAmount : 0,
       cashAmount: paymentMethod === 'cash' ? effectiveAmountPaid : paymentMethod === 'split' ? effectiveAmountPaid / 2 : 0,
       transferAmount: paymentMethod === 'transfer' ? effectiveAmountPaid : paymentMethod === 'split' ? effectiveAmountPaid / 2 : 0,
       pointsEarned: earnedPoints,
@@ -336,6 +375,8 @@ export const POSComponent: React.FC<POSProps> = ({
       name,
       category: quickProductCategory.trim() || 'Chưa phân loại',
       unit: quickProductUnit.trim() || 'cái',
+      purchaseUnit: quickProductUnit.trim() || 'cái',
+      unitsPerPurchase: 1,
       costPrice: Math.max(0, quickProductCost),
       sellingPrice: Math.max(0, quickProductPrice),
       stock: Math.max(0, quickProductStock),
@@ -345,7 +386,6 @@ export const POSComponent: React.FC<POSProps> = ({
     onAddQuickProduct(product);
     addToCart(product);
     setSearchTerm('');
-    setSelectedCategory('all');
     setIsQuickProductModal(false);
     setQuickProductName('');
     setQuickProductCode('');
@@ -381,25 +421,15 @@ export const POSComponent: React.FC<POSProps> = ({
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const scrollToCart = () => {
-    const el = document.getElementById('pos-cart-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToCatalog = () => {
-    const el = document.getElementById('pos-catalog-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 p-2 md:p-4 bg-slate-50 overflow-y-auto lg:overflow-hidden relative">
+    <div className="flex flex-col h-full gap-2 p-2 md:p-3 bg-slate-50 overflow-y-auto relative">
       {/* LEFT: Product Catalog & Fast search */}
       <div
         id="pos-catalog-section"
-        className="flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:shrink lg:overflow-hidden min-h-[420px] lg:min-h-0"
+        className="w-full flex flex-col min-w-0 bg-white border-b border-slate-200 shrink-0"
       >
         {/* Search Header */}
-        <div className="p-3 border-b border-slate-200 bg-white space-y-3">
+        <div className="p-2 bg-white">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -421,118 +451,37 @@ export const POSComponent: React.FC<POSProps> = ({
             </div>
           </div>
 
-          {/* Category Badges */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition ${
-                  selectedCategory === cat
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {cat === 'all' ? 'Tất cả' : cat}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Mobile floating quick view & scroll to cart bar */}
-        {cart.length > 0 && (
-          <div className="lg:hidden p-2.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shadow-sm shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-sky-400 text-slate-900 font-extrabold text-xs flex items-center justify-center">
-                {totalCartCount}
-              </span>
-              <div className="text-xs">
-                <span className="text-slate-300">Đã chọn {totalCartCount} món • </span>
-                <span className="font-bold text-emerald-400 text-sm">{formatVND(finalTotal)}</span>
-              </div>
-            </div>
+
+        {/* Product name suggestions */}
+        <div className="max-h-56 overflow-y-auto bg-white">
+          {!searchTerm.trim() && <div className="px-3 py-2 text-xs text-slate-400">Nhập tên sản phẩm để tìm hàng</div>}
+          {searchTerm.trim() && filteredProducts.slice(0, 20).map(product => (
             <button
+              key={product.id}
               type="button"
-              onClick={scrollToCart}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+              disabled={product.stock <= 0}
+              onClick={() => { addToCart(product); setSearchTerm(''); }}
+              className="w-full text-left px-3 py-2.5 border-t border-slate-100 text-sm text-slate-800 disabled:text-slate-300 disabled:bg-slate-50"
             >
-              <span>Xem giỏ hàng & thanh toán ↓</span>
+              {product.name}
             </button>
-          </div>
-        )}
-
-        {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {filteredProducts.map(product => {
-            const isOutOfStock = product.stock <= 0;
-            const isLowStock = product.stock > 0 && product.stock <= (product.minStockAlert || 5);
-
-            return (
-              <div
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className={`relative flex flex-col justify-between p-3 rounded-xl border transition cursor-pointer select-none text-left ${
-                  isOutOfStock
-                    ? 'bg-slate-50 border-slate-200 opacity-60'
-                    : 'bg-white border-slate-200 hover:border-sky-500 hover:shadow-md active:scale-98'
-                }`}
+          ))}
+          {searchTerm.trim() && filteredProducts.length === 0 && (
+            <div className="px-3 py-3 border-t border-slate-100 text-sm text-slate-500">
+              Không tìm thấy sản phẩm.
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickProductName(searchTerm.trim());
+                  setQuickProductCode(/^\d+$/.test(searchTerm.trim()) ? searchTerm.trim() : '');
+                  setIsQuickProductModal(true);
+                }}
+                className="ml-2 text-sky-700 underline"
               >
-                <div>
-                  <div className="flex justify-between items-start gap-1">
-                    <span className="text-[11px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
-                      {product.unit}
-                    </span>
-                    {isOutOfStock ? (
-                      <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded">
-                        Hết hàng
-                      </span>
-                    ) : isLowStock ? (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded">
-                        Còn {product.stock}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        Kho: {product.stock}
-                      </span>
-                    )}
-                  </div>
-
-                  <h4 className="font-semibold text-slate-800 text-sm mt-1.5 line-clamp-2 leading-snug">
-                    {product.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">{product.code}</p>
-                </div>
-
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-baseline justify-between">
-                  <span className="text-base font-bold text-sky-700">
-                    {formatVND(product.sellingPrice)}
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Vốn: {formatVND(product.costPrice)}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredProducts.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
-              <AlertCircle className="w-10 h-10 mb-2 stroke-1" />
-              <p className="text-sm font-medium">Không tìm thấy sản phẩm phù hợp</p>
-              <p className="text-xs text-slate-400 mt-1">Thử đổi từ khóa hoặc quét lại mã vạch</p>
-              {searchTerm.trim() && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickProductName(searchTerm.trim());
-                    setQuickProductCode(/^\d+$/.test(searchTerm.trim()) ? searchTerm.trim() : '');
-                    setIsQuickProductModal(true);
-                  }}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm"
-                >
-                  <Plus className="w-4 h-4" /> Thêm sản phẩm “{searchTerm.trim()}”
-                </button>
-              )}
+                Thêm mới
+              </button>
             </div>
           )}
         </div>
@@ -541,20 +490,11 @@ export const POSComponent: React.FC<POSProps> = ({
       {/* RIGHT: Bill & Checkout Panel */}
       <div
         id="pos-cart-section"
-        className="w-full lg:w-96 xl:w-[420px] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:overflow-hidden"
+        className="w-full flex flex-col bg-white border-t border-slate-300 shrink-0"
       >
-        <div className="lg:hidden p-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
-          <span>🛒 GIỎ HÀNG & THANH TOÁN</span>
-          <button
-            type="button"
-            onClick={scrollToCatalog}
-            className="text-sky-600 hover:underline text-[11px] font-semibold"
-          >
-            ↑ Chọn thêm sản phẩm
-          </button>
-        </div>
+        <div className="px-3 py-2 border-b border-slate-200 text-sm font-bold text-slate-800">HÓA ĐƠN</div>
         {/* Customer Header */}
-        <div className="p-3 border-b border-slate-200 bg-slate-50/70">
+        <div className="p-2 border-b border-slate-200 bg-white">
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1">
               <select
@@ -601,11 +541,11 @@ export const POSComponent: React.FC<POSProps> = ({
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 min-h-[100px] overflow-y-auto p-2.5 space-y-2">
+        <div className="min-h-[48px] overflow-y-auto px-2 py-1 space-y-0">
           {cart.map(item => (
             <div
               key={item.productId}
-              className="p-2.5 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition"
+              className="py-2 border-b border-slate-100 bg-white"
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
@@ -628,6 +568,25 @@ export const POSComponent: React.FC<POSProps> = ({
                       </span>
                     )}
                   </div>
+                  {(() => {
+                    const product = products.find(p => p.id === item.productId);
+                    const factor = Math.max(1, product?.unitsPerPurchase || 1);
+                    const hasPurchaseUnit = !!product && factor > 1 && (product.purchaseUnit || product.unit) !== product.unit;
+                    return hasPurchaseUnit ? (
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <label className="text-[10px] text-slate-500">Bán theo:</label>
+                        <select
+                          value={(item.unitsPerSale || 1) > 1 ? "purchase" : "retail"}
+                          onChange={e => changeSaleUnit(item.productId, e.target.value === "purchase")}
+                          className="px-2 py-1 text-[11px] border border-sky-200 rounded-md bg-sky-50 text-sky-800 font-semibold"
+                        >
+                          <option value="retail">{product.unit} (lẻ)</option>
+                          <option value="purchase">{product.purchaseUnit} ({factor} {product.unit})</option>
+                        </select>
+                        <span className="text-[10px] text-slate-500">Tồn trừ theo {product.unit}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
 
                 <div className="text-right shrink-0">
@@ -644,7 +603,7 @@ export const POSComponent: React.FC<POSProps> = ({
               </div>
 
               {/* Quantity Controls */}
-              <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100">
+              <div className="mt-1 flex items-center justify-between pt-1">
                 <div className="flex items-center border border-slate-200 rounded-md overflow-hidden bg-slate-50">
                   <button
                     onClick={() => updateQuantity(item.productId, -1)}
@@ -652,9 +611,16 @@ export const POSComponent: React.FC<POSProps> = ({
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="px-2.5 py-0.5 text-xs font-bold text-slate-800 min-w-8 text-center bg-white">
-                    {item.quantity}
-                  </span>
+                  <input
+                    type="number" onFocus={e => e.currentTarget.select()}
+                    min="0.001"
+                    step="0.001"
+                    value={item.quantity || ''}
+                    aria-label={`Số lượng ${item.name}`}
+                    onChange={e => setItemQuantity(item.productId, e.target.value === '' ? 0 : Number(e.target.value))}
+                    onBlur={() => { if (item.quantity <= 0) setItemQuantity(item.productId, 1); }}
+                    className="w-16 px-1 py-1 text-xs font-bold text-center bg-white border-x border-slate-200"
+                  />
                   <button
                     onClick={() => updateQuantity(item.productId, 1)}
                     className="p-1 hover:bg-slate-200 text-slate-700 transition"
@@ -676,8 +642,7 @@ export const POSComponent: React.FC<POSProps> = ({
           {cart.length === 0 && (
             <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-center p-4">
               <Receipt className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-xs font-medium">Giỏ hàng đang trống</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Nhấp chọn mặt hàng bên trái để thêm vào đơn</p>
+              <p className="text-sm text-slate-400">Chưa chọn sản phẩm</p>
             </div>
           )}
         </div>
@@ -711,11 +676,11 @@ export const POSComponent: React.FC<POSProps> = ({
                 </button>
               </div>
               <input
-                type="number"
+                type="number" onFocus={e => e.currentTarget.select()}
                 min="0"
                 value={orderDiscountValue === 0 ? '' : orderDiscountValue}
                 placeholder="0"
-                onChange={e => setOrderDiscountValue(Number(e.target.value) || 0)}
+                onChange={e => setOrderDiscountValue((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                 className="w-20 px-2 py-1 text-right bg-white border border-slate-300 rounded focus:ring-1 focus:ring-sky-500 font-semibold"
               />
             </div>
@@ -793,12 +758,12 @@ export const POSComponent: React.FC<POSProps> = ({
               <span className="font-medium text-slate-700">Khách đưa / Thanh toán:</span>
               <div className="relative">
                 <input
-                  type="number"
+                  type="number" onFocus={e => e.currentTarget.select()}
                   min="0"
                   value={isAmountManuallySet ? amountPaid : finalTotal}
                   onChange={e => {
                     setIsAmountManuallySet(true);
-                    setAmountPaid(Number(e.target.value) || 0);
+                    setAmountPaid((e.target.value === '' ? ('' as any) : Number(e.target.value)));
                   }}
                   className="w-32 px-2 py-1 text-right font-bold text-slate-900 border border-slate-300 rounded focus:ring-1 focus:ring-sky-500 bg-white"
                 />
@@ -888,11 +853,12 @@ export const POSComponent: React.FC<POSProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Đơn giá bán tùy chỉnh (Giá gốc: {formatVND(editingItem.originalPrice)})
                 </label>
+                <p className="text-[11px] text-slate-500 mb-1">Có thể sửa giá riêng cho đơn này; chỉ lưu vào giá niêm yết nếu chọn ô bên dưới.</p>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     value={editPrice}
-                    onChange={e => setEditPrice(Number(e.target.value) || 0)}
+                    onChange={e => setEditPrice((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">VNĐ</span>
@@ -919,16 +885,17 @@ export const POSComponent: React.FC<POSProps> = ({
                     </button>
                   </div>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={editDiscountValue}
-                    onChange={e => setEditDiscountValue(Number(e.target.value) || 0)}
+                    onChange={e => setEditDiscountValue((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     placeholder="Nhập mức giảm"
                     className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg font-semibold"
                   />
                 </div>
               </div>
 
+              {(editingItem.unitsPerSale || 1) === 1 && (
               <label className="flex items-start gap-2 p-2.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-900 cursor-pointer">
                 <input
                   type="checkbox"
@@ -941,6 +908,8 @@ export const POSComponent: React.FC<POSProps> = ({
                   <span className="block text-[11px] mt-0.5 text-sky-700">Lưu giá mới vào danh mục và ghi lại lịch sử giá. Nếu bỏ chọn, chỉ áp dụng cho đơn này.</span>
                 </span>
               </label>
+              )}
+              {(editingItem.unitsPerSale || 1) > 1 && <p className="text-[11px] text-amber-700">Giá đang sửa là giá theo {editingItem.unit}; không ghi đè giá bán lẻ của sản phẩm.</p>}
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
                 <span className="text-slate-600 font-medium">Thành tiền sau giảm:</span>
                 <span className="text-sm font-bold text-sky-700">
@@ -1002,18 +971,22 @@ export const POSComponent: React.FC<POSProps> = ({
                   <input value={quickProductUnit} onChange={e => setQuickProductUnit(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="cái, chai, gói..." />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Tồn kho ban đầu</label>
-                  <input type="number" min="0" value={quickProductStock} onChange={e => setQuickProductStock(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                  <label className="block font-semibold text-slate-700 mb-1">Lượng nhập ban đầu</label>
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductStock} onChange={e => setQuickProductStock((e.target.value === '' ? ('' as any) : Number(e.target.value)))} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Giá vốn (VNĐ)</label>
-                  <input type="number" min="0" value={quickProductCost} onChange={e => setQuickProductCost(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductCost} onChange={e => {
+                      const nextCost = (e.target.value === '' ? ('' as any) : Number(e.target.value));
+                      setQuickProductCost(nextCost);
+                      setQuickProductPrice(suggestRetailPrice(nextCost));
+                    }} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Giá bán (VNĐ)</label>
-                  <input type="number" min="0" value={quickProductPrice} onChange={e => setQuickProductPrice(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
+                  <label className="block font-semibold text-slate-700 mb-1">Giá bán gợi ý (VNĐ)</label>
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="0" value={quickProductPrice} onChange={e => setQuickProductPrice((e.target.value === '' ? ('' as any) : Number(e.target.value)))} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -1126,20 +1099,38 @@ export const POSComponent: React.FC<POSProps> = ({
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setCompletedOrder(null)}
-                className="flex-1 py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
+                disabled={isSharingReceipt}
+                onClick={async () => {
+                  setIsSharingReceipt(true);
+                  try {
+                    await shareReceiptImage(completedOrder, settings);
+                  } catch (error) {
+                    console.error('Share receipt image failed:', error);
+                    alert('Chưa chia sẻ được ảnh hóa đơn. Vui lòng thử lại.');
+                  } finally {
+                    setIsSharingReceipt(false);
+                  }
+                }}
+                className="py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow"
               >
-                Đóng (Tạo đơn mới)
+                <Share2 className="w-4 h-4" /> {isSharingReceipt ? 'Đang tạo ảnh…' : 'Chia sẻ ảnh'}
               </button>
               <button
                 type="button"
                 onClick={() => printReceipt(completedOrder, settings)}
-                className="flex-1 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                className="py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow"
               >
-                <Receipt className="w-4 h-4" /> In Hóa Đơn (PDF)
+                <Receipt className="w-4 h-4" /> In PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setCompletedOrder(null)}
+                className="col-span-2 py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
+              >
+                Đóng (Tạo đơn mới)
               </button>
             </div>
           </div>

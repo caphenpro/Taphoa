@@ -491,20 +491,20 @@ export const CustomersAndDebtComponent: React.FC<CustomersAndDebtProps> = ({
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Số nợ hiện tại (VNĐ)</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={initialDebt}
-                    onChange={e => setInitialDebt(Number(e.target.value) || 0)}
+                    onChange={e => setInitialDebt((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-rose-600"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Điểm tích lũy ban đầu</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={points}
-                    onChange={e => setPoints(Number(e.target.value) || 0)}
+                    onChange={e => setPoints((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-amber-600"
                   />
                 </div>
@@ -545,12 +545,12 @@ export const CustomersAndDebtComponent: React.FC<CustomersAndDebtProps> = ({
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">Số tiền khách trả (VNĐ)</label>
                 <input
-                  type="number"
+                  type="number" onFocus={e => e.currentTarget.select()}
                   min="1000"
                   max={targetCustomer.totalDebt}
                   required
                   value={paymentAmount}
-                  onChange={e => setPaymentAmount(Number(e.target.value) || 0)}
+                  onChange={e => setPaymentAmount((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-base text-emerald-700"
                 />
               </div>

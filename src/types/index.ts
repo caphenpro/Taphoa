@@ -14,8 +14,10 @@ export interface Product {
   code: string; // barcode or custom SKU
   name: string;
   category: string;
-  unit: string; // cái, chai, lon, kg, gói, thùng, hộp...
-  costPrice: number; // giá vốn nhập hàng
+  unit: string; // Đơn vị bán lẻ / đơn vị tồn kho nhỏ nhất
+  purchaseUnit?: string; // Đơn vị nhập sỉ: thùng, cây, bao...
+  unitsPerPurchase?: number; // Số đơn vị bán lẻ trong một đơn vị nhập sỉ
+  costPrice: number; // Giá vốn trên một đơn vị tồn kho/bán lẻ nhỏ nhất
   sellingPrice: number; // giá bán niêm yết
   stock: number; // số lượng tồn hiện tại
   minStockAlert?: number; // ngưỡng cảnh báo sắp hết hàng
@@ -38,8 +40,10 @@ export interface CartItem {
   productId: string;
   code: string;
   name: string;
-  unit: string;
-  costPrice: number;
+  unit: string; // Đơn vị đang bán: gói, thùng, kg, cây...
+  baseUnit?: string; // Đơn vị tồn kho nhỏ nhất
+  unitsPerSale?: number; // Số đơn vị tồn kho trong 1 đơn vị bán
+  costPrice: number; // Giá vốn trên một đơn vị tồn kho nhỏ nhất
   originalPrice: number; // giá gốc niêm yết
   customPrice: number; // giá bán thực tế cho phép điều chỉnh
   quantity: number;
@@ -68,6 +72,8 @@ export interface Order {
   cashAmount?: number; // nếu trả tiền mặt
   transferAmount?: number; // nếu chuyển khoản
   debtAmount: number; // nợ phát sinh từ đơn này (finalTotal - amountPaid)
+  previousDebt?: number; // tổng nợ khách trước khi lập đơn
+  totalDebtAfterOrder?: number; // tổng nợ khách sau khi cộng nợ đơn này
   pointsEarned: number; // điểm được tích từ đơn này
   pointsRedeemed?: number; // điểm đã dùng trừ tiền (nếu có)
   pointsDiscountAmount?: number;
@@ -87,6 +93,7 @@ export interface InventoryTransaction {
   costPrice?: number;
   totalValue?: number;
   supplierName?: string;
+  supplierPaidAmount?: number;
   referenceOrderNumber?: string;
   note?: string;
 }
@@ -99,6 +106,26 @@ export interface DebtPayment {
   amountPaid: number;
   paymentMethod: 'cash' | 'transfer';
   remainingDebt: number;
+  note?: string;
+}
+
+export interface SupplierDebt {
+  id: string;
+  date: string;
+  supplierName: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  inventoryTransactionId?: string;
+  note?: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  date: string;
+  supplierDebtId: string;
+  supplierName: string;
+  amount: number;
   note?: string;
 }
 
@@ -124,6 +151,8 @@ export interface AppStateData {
   orders: Order[];
   inventoryTransactions: InventoryTransaction[];
   debtPayments: DebtPayment[];
+  supplierDebts: SupplierDebt[];
+  supplierPayments: SupplierPayment[];
   priceHistory: PriceHistoryEntry[];
   settings: StoreSettings;
   lastBackupDate?: string;
