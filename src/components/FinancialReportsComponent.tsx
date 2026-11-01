@@ -67,12 +67,10 @@ export const FinancialReportsComponent: React.FC<FinancialReportsProps> = ({
   const totalProfit = filteredOrders.reduce((sum, o) => sum + o.profit, 0);
   const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0';
 
-  const totalCashCollected = filteredOrders
-    .filter(o => o.paymentMethod === 'cash')
-    .reduce((sum, o) => sum + o.amountPaid, 0);
-  const totalTransferCollected = filteredOrders
-    .filter(o => o.paymentMethod === 'transfer')
-    .reduce((sum, o) => sum + o.amountPaid, 0);
+  const totalCashCollected = filteredOrders.reduce((sum, o) =>
+    sum + (o.cashAmount ?? (o.paymentMethod === 'cash' ? o.amountPaid : 0)), 0);
+  const totalTransferCollected = filteredOrders.reduce((sum, o) =>
+    sum + (o.transferAmount ?? (o.paymentMethod === 'transfer' ? o.amountPaid : 0)), 0);
   const totalNewDebts = filteredOrders.reduce((sum, o) => sum + o.debtAmount, 0);
 
   // Best selling products in selected range
