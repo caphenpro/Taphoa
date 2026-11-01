@@ -216,9 +216,9 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setTargetProduct(product);
     setStockModalType(type);
     setStockChangeQty(type === 'import' ? 10 : 1);
-    setStockUnitCost(product.costPrice);
+    setStockUnitCost(product.costPrice * Math.max(1, product.unitsPerPurchase || 1));
     setSupplierName('');
-    setSupplierPaidAmount(type === 'import' ? 10 * product.costPrice : 0);
+    setSupplierPaidAmount(type === 'import' ? 10 * product.costPrice * Math.max(1, product.unitsPerPurchase || 1) : 0);
     setStockNote('');
     setIsStockModalOpen(true);
   };
@@ -228,6 +228,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     if (!targetProduct || (stockModalType === 'stock_adjustment' ? stockChangeQty < 0 : stockChangeQty <= 0)) return;
     if (stockModalType === 'import') {
       const importTotal = stockChangeQty * stockUnitCost;
+      if (!Number.isFinite(importTotal) || importTotal < 0) return;
       if (supplierPaidAmount < importTotal && !supplierName.trim()) {
         alert('Vui lòng nhập tên nhà cung cấp để theo dõi khoản còn nợ.');
         return;
