@@ -286,7 +286,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       totalValue: stockModalType === 'import' ? stockChangeQty * stockUnitCost : Math.abs(delta) * (stockUnitCost || targetProduct.costPrice),
       supplierName: supplierName.trim(),
       supplierPaidAmount: stockModalType === 'import' ? Math.max(0, Math.min(stockChangeQty * stockUnitCost, supplierPaidAmount)) : 0,
-      note: stockNote.trim() || (stockModalType === 'import' ? 'Nhập hàng vào kho' : 'Xuất hỏng/điều chỉnh'),
+      note: stockNote.trim() || (stockModalType === 'import' ? `Nhập ${stockChangeQty} ${targetProduct.purchaseUnit || targetProduct.unit} (${importedBaseQuantity} ${targetProduct.unit})` : 'Xuất hỏng/điều chỉnh'),
     };
 
     onStockTransaction(trans);
@@ -773,6 +773,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 <input
                   type="text"
                   value={formNotes}
+                  list="inventory-notes"
                   onChange={e => setFormNotes(e.target.value)}
                   placeholder="Quy cách đóng thùng, vị trí kệ..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
