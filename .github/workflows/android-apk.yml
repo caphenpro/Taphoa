@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build-apk:
@@ -71,6 +72,19 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Start first signed release build
+        if: github.event_name == 'push' && github.event.head_commit.message == 'ci(android): add signed release APK workflow'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'android-apk.yml',
+              ref: 'main',
+              inputs: { release_version: '1.0.0' }
+            });
 
       - name: Prepare release signing
         if: github.event_name == 'workflow_dispatch'
