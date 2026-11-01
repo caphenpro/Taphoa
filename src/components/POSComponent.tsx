@@ -678,6 +678,25 @@ export const POSComponent: React.FC<POSProps> = ({
                       </span>
                     )}
                   </div>
+                  {(() => {
+                    const product = products.find(p => p.id === item.productId);
+                    const factor = Math.max(1, product?.unitsPerPurchase || 1);
+                    const hasPurchaseUnit = !!product && factor > 1 && (product.purchaseUnit || product.unit) !== product.unit;
+                    return hasPurchaseUnit ? (
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <label className="text-[10px] text-slate-500">Bán theo:</label>
+                        <select
+                          value={(item.unitsPerSale || 1) > 1 ? "purchase" : "retail"}
+                          onChange={e => changeSaleUnit(item.productId, e.target.value === "purchase")}
+                          className="px-2 py-1 text-[11px] border border-sky-200 rounded-md bg-sky-50 text-sky-800 font-semibold"
+                        >
+                          <option value="retail">{product.unit} (lẻ)</option>
+                          <option value="purchase">{product.purchaseUnit} ({factor} {product.unit})</option>
+                        </select>
+                        <span className="text-[10px] text-slate-500">Tồn trừ theo {product.unit}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
 
                 <div className="text-right shrink-0">
@@ -986,6 +1005,7 @@ export const POSComponent: React.FC<POSProps> = ({
                 </div>
               </div>
 
+              {(editingItem.unitsPerSale || 1) === 1 && (
               <label className="flex items-start gap-2 p-2.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-900 cursor-pointer">
                 <input
                   type="checkbox"
@@ -998,6 +1018,8 @@ export const POSComponent: React.FC<POSProps> = ({
                   <span className="block text-[11px] mt-0.5 text-sky-700">Lưu giá mới vào danh mục và ghi lại lịch sử giá. Nếu bỏ chọn, chỉ áp dụng cho đơn này.</span>
                 </span>
               </label>
+              )}
+              {(editingItem.unitsPerSale || 1) > 1 && <p className="text-[11px] text-amber-700">Giá đang sửa là giá theo {editingItem.unit}; không ghi đè giá bán lẻ của sản phẩm.</p>}
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center">
                 <span className="text-slate-600 font-medium">Thành tiền sau giảm:</span>
                 <span className="text-sm font-bold text-sky-700">
