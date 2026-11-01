@@ -816,6 +816,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
               {targetProduct.name} ({targetProduct.unit}) - Hiện tồn: <strong>{targetProduct.stock}</strong>
             </p>
 
+              <datalist id="supplier-names-stock">{Array.from(new Set(transactions.map(t => t.supplierName).filter(Boolean) as string[])).map(v => <option key={v} value={v} />)}</datalist>
+              <datalist id="inventory-notes-stock">{Array.from(new Set(transactions.map(t => t.note).filter(Boolean) as string[])).map(v => <option key={v} value={v} />)}</datalist>
             <form onSubmit={handleConfirmStock} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
@@ -864,7 +866,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                       type="text"
                       placeholder="VD: NPP Tiến Thành"
                       value={supplierName}
-                      list="supplier-names"
+                      list="supplier-names-stock"
                       onChange={e => setSupplierName(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     />
@@ -878,7 +880,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   type="text"
                   placeholder="VD: Hàng móp méo, cận date..."
                   value={stockNote}
-                  list="inventory-notes"
+                  list="inventory-notes-stock"
                   onChange={e => setStockNote(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 />
