@@ -705,22 +705,22 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Tồn kho ban đầu ({formUnit || "đơn vị lẻ"})</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Lượng nhập ban đầu ({formUnit || "đơn vị lẻ"})</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={formStock}
-                    onChange={e => setFormStock(Number(e.target.value) || 0)}
+                    onChange={e => setFormStock((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
                   />
                 </div>
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Báo hết khi dưới</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="1"
                     value={formMinStockAlert}
-                    onChange={e => setFormMinStockAlert(Number(e.target.value) || 1)}
+                    onChange={e => setFormMinStockAlert((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                   />
                 </div>
@@ -733,8 +733,8 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 </div>
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Số {formUnit || 'đơn vị bán'} trong 1 {formPurchaseUnit || 'đơn vị nhập'}</label>
-                  <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => {
-                      const nextFactor = Math.max(1, Number(e.target.value) || 1);
+                  <input type="number" onFocus={e => e.currentTarget.select()} min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => {
+                      const nextFactor = e.target.value === '' ? ('' as any) : Math.max(1, (e.target.value === '' ? ('' as any) : Number(e.target.value)));
                       setFormUnitsPerPurchase(nextFactor);
                       setFormSellingPrice(suggestRetailPrice((Number(formCostPrice) || 0) / nextFactor));
                     }} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
@@ -745,11 +745,11 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Giá nhập mỗi {formPurchaseUnit || 'đơn vị nhập'} (VNĐ)</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={formCostPrice}
                     onChange={e => {
-                      const nextCost = Number(e.target.value) || 0;
+                      const nextCost = (e.target.value === '' ? ('' as any) : Number(e.target.value));
                       setFormCostPrice(nextCost);
                       setFormSellingPrice(suggestRetailPrice(nextCost / Math.max(1, formUnitsPerPurchase)));
                     }}
@@ -759,10 +759,10 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Giá bán niêm yết (VNĐ)</label>
                   <input
-                    type="number"
+                    type="number" onFocus={e => e.currentTarget.select()}
                     min="0"
                     value={formSellingPrice}
-                    onChange={e => setFormSellingPrice(Number(e.target.value) || 0)}
+                    onChange={e => setFormSellingPrice((e.target.value === '' ? ('' as any) : Number(e.target.value)))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-sky-700"
                   />
                 </div>
@@ -825,12 +825,12 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   {stockModalType === 'stock_adjustment' ? `Tồn thực tế (${targetProduct?.unit || ''})` : stockModalType === 'import' ? `Số ${targetProduct?.purchaseUnit || targetProduct?.unit || 'đơn vị nhập'} nhập` : `Số lượng (${targetProduct?.unit || ''})`}
                 </label>
                 <input
-                  type="number"
+                  type="number" onFocus={e => e.currentTarget.select()}
                   min={stockModalType === 'stock_adjustment' ? 0 : 1}
                   required
                   value={stockChangeQty}
                   onChange={e => {
-                    const nextQty = Number(e.target.value) || 0;
+                    const nextQty = (e.target.value === '' ? ('' as any) : Number(e.target.value));
                     const wasFullyPaid = supplierPaidAmount === stockChangeQty * stockUnitCost;
                     setStockChangeQty(nextQty);
                     if (stockModalType === 'import' && wasFullyPaid) setSupplierPaidAmount(nextQty * stockUnitCost);
@@ -844,11 +844,11 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">Giá nhập mỗi {targetProduct?.purchaseUnit || targetProduct?.unit || 'đơn vị'} (VNĐ)</label>
                     <input
-                      type="number"
+                      type="number" onFocus={e => e.currentTarget.select()}
                       min="0"
                       value={stockUnitCost}
                       onChange={e => {
-                        const nextCost = Number(e.target.value) || 0;
+                        const nextCost = (e.target.value === '' ? ('' as any) : Number(e.target.value));
                         const wasFullyPaid = supplierPaidAmount === stockChangeQty * stockUnitCost;
                         setStockUnitCost(nextCost);
                         if (wasFullyPaid) setSupplierPaidAmount(stockChangeQty * nextCost);
@@ -858,7 +858,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   </div>
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">Đã thanh toán đợt nhập (VNĐ)</label>
-                    <input type="number" min="0" max={stockChangeQty * stockUnitCost} value={supplierPaidAmount} onChange={e => setSupplierPaidAmount(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold" />
+                    <input type="number" onFocus={e => e.currentTarget.select()} min="0" max={stockChangeQty * stockUnitCost} value={supplierPaidAmount} onChange={e => setSupplierPaidAmount((e.target.value === '' ? ('' as any) : Number(e.target.value)))} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold" />
                     <p className="text-[11px] text-slate-500 mt-1">Quy đổi: {stockChangeQty * Math.max(1, targetProduct?.unitsPerPurchase || 1)} {targetProduct?.unit} · Giá vốn mỗi {targetProduct?.unit}: {formatVND(stockUnitCost / Math.max(1, targetProduct?.unitsPerPurchase || 1))}<br/>Tổng tiền nhập: {formatVND(stockChangeQty * stockUnitCost)} · Còn nợ: {formatVND(Math.max(0, stockChangeQty * stockUnitCost - supplierPaidAmount))}</p>
                   </div>
                   <div>
