@@ -383,7 +383,6 @@ export const POSComponent: React.FC<POSProps> = ({
     onAddQuickProduct(product);
     addToCart(product);
     setSearchTerm('');
-    setSelectedCategory('all');
     setIsQuickProductModal(false);
     setQuickProductName('');
     setQuickProductCode('');
