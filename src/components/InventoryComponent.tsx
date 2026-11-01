@@ -28,6 +28,8 @@ interface InventoryProps {
   onStockTransaction: (transaction: InventoryTransaction) => void;
 }
 
+const suggestRetailPrice = (unitCost: number) => unitCost > 0 ? Math.ceil((unitCost * 1.15) / 1000) * 1000 : 0;
+
 export const InventoryComponent: React.FC<InventoryProps> = ({
   products,
   transactions,
@@ -260,6 +262,9 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       costPrice: stockModalType === 'import' && newStock > 0
         ? ((targetProduct.stock * targetProduct.costPrice) + (importedBaseQuantity * importUnitCost)) / newStock
         : targetProduct.costPrice,
+      sellingPrice: stockModalType === 'import' && newStock > 0
+        ? suggestRetailPrice(((targetProduct.stock * targetProduct.costPrice) + (importedBaseQuantity * importUnitCost)) / newStock)
+        : targetProduct.sellingPrice,
       updatedAt: new Date().toISOString(),
     };
 
@@ -718,7 +723,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => setFormUnitsPerPurchase(Number(e.target.value) || 1)} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500">Ví dụ: mì bán theo gói, nhập theo thùng 30 gói. Đường bán theo kg, nhập theo cây 12 kg. Giá bán lẻ được cài riêng.</p>
+              <p className="text-[11px] text-slate-500">Ví dụ: mì bán theo gói, nhập theo thùng 30 gói. Đường bán theo kg, nhập theo cây 12 kg. Giá bán gợi ý = giá vốn + 15%, làm tròn lên 1.000đ; có thể sửa lại.</p>
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">Giá vốn mỗi {formUnit || 'đơn vị bán'} (VNĐ)</label>
@@ -726,7 +731,11 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                     type="number"
                     min="0"
                     value={formCostPrice}
-                    onChange={e => setFormCostPrice(Number(e.target.value) || 0)}
+                    onChange={e => {
+                      const nextCost = Number(e.target.value) || 0;
+                      setFormCostPrice(nextCost);
+                      setFormSellingPrice(suggestRetailPrice(nextCost));
+                    }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800"
                   />
                 </div>
