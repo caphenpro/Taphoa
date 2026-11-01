@@ -13,7 +13,7 @@ export function printReceipt(order: Order, settings: StoreSettings) {
       <td style="padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px;">
         <div style="font-weight: 600;">${idx + 1}. ${item.name}</div>
         <div style="font-size: 11px; color: #64748b;">
-          ${item.quantity} ${item.unit} x ${formatVND(item.customPrice)}
+          ${item.quantity} ${item.unit} x ${formatVND(item.customPrice)}${(item.unitsPerSale || 1) > 1 ? `(quy đổi ${item.quantity * (item.unitsPerSale || 1)} ${item.baseUnit || "đv lẻ"})` : ""}
           ${item.discountValue > 0 ? `(Giảm ${item.discountType === 'percentage' ? item.discountValue + '%' : formatVND(item.discountValue)})` : ''}
         </div>
       </td>
