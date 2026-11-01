@@ -14,7 +14,9 @@ export interface Product {
   code: string; // barcode or custom SKU
   name: string;
   category: string;
-  unit: string; // cái, chai, lon, kg, gói, thùng, hộp...
+  unit: string; // Đơn vị bán lẻ / đơn vị tồn kho nhỏ nhất
+  purchaseUnit?: string; // Đơn vị nhập sỉ: thùng, cây, bao...
+  unitsPerPurchase?: number; // Số đơn vị bán lẻ trong một đơn vị nhập sỉ
   costPrice: number; // giá vốn nhập hàng
   sellingPrice: number; // giá bán niêm yết
   stock: number; // số lượng tồn hiện tại
