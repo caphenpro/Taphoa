@@ -151,6 +151,19 @@ export default function App() {
     });
   };
 
+  const handleAddSupplierDebt = (supplierName: string, amount: number, note: string) => {
+    const debt: SupplierDebt = {
+      id: 'supdebt-manual-' + Date.now(),
+      date: new Date().toISOString(),
+      supplierName,
+      totalAmount: amount,
+      paidAmount: 0,
+      remainingAmount: amount,
+      note: note || 'Ghi nợ đầu kỳ',
+    };
+    setAppState(prev => ({ ...prev, supplierDebts: [debt, ...(prev.supplierDebts || [])] }));
+  };
+
   const handleSupplierPayment = (debtId: string, amount: number, note: string) => {
     setAppState(prev => {
       const debt = (prev.supplierDebts || []).find(d => d.id === debtId);
@@ -406,6 +419,7 @@ export default function App() {
             debts={appState.supplierDebts || []}
             payments={appState.supplierPayments || []}
             onRecordPayment={handleSupplierPayment}
+            onAddDebt={handleAddSupplierDebt}
           />
         )}
 
