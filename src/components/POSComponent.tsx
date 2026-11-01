@@ -210,6 +210,17 @@ export const POSComponent: React.FC<POSProps> = ({
     });
   };
 
+  const setItemQuantity = (productId: string, quantity: number) => {
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    setCart(prev => prev.map(item => {
+      if (item.productId !== productId) return item;
+      const singleAfterDisc = item.discountType === 'percentage'
+        ? Math.round(item.customPrice * (1 - item.discountValue / 100))
+        : Math.max(0, item.customPrice - item.discountValue);
+      return { ...item, quantity, subtotal: Math.round(singleAfterDisc * quantity) };
+    }));
+  };
+
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(i => i.productId !== productId));
   };
@@ -664,9 +675,15 @@ export const POSComponent: React.FC<POSProps> = ({
                   >
                     <Minus className="w-3 h-3" />
                   </button>
-                  <span className="px-2.5 py-0.5 text-xs font-bold text-slate-800 min-w-8 text-center bg-white">
-                    {item.quantity}
-                  </span>
+                  <input
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    value={item.quantity}
+                    aria-label={`Số lượng ${item.name}`}
+                    onChange={e => setItemQuantity(item.productId, Number(e.target.value))}
+                    className="w-16 px-1 py-1 text-xs font-bold text-center bg-white border-x border-slate-200"
+                  />
                   <button
                     onClick={() => updateQuantity(item.productId, 1)}
                     className="p-1 hover:bg-slate-200 text-slate-700 transition"
