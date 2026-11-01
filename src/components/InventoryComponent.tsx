@@ -61,7 +61,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formUnit, setFormUnit] = useState('gói');
-  const [formPurchaseUnit, setFormPurchaseUnit] = useState('thùng');
+  const [formPurchaseUnit, setFormPurchaseUnit] = useState('gói');
   const [formUnitsPerPurchase, setFormUnitsPerPurchase] = useState<number>(1);
   const [formCostPrice, setFormCostPrice] = useState<number>(0);
   const [formSellingPrice, setFormSellingPrice] = useState<number>(0);
@@ -110,7 +110,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setFormName('');
     setFormCategory('Hàng tổng hợp');
     setFormUnit('gói');
-    setFormPurchaseUnit('thùng');
+    setFormPurchaseUnit('gói');
     setFormUnitsPerPurchase(1);
     setFormCostPrice(0);
     setFormSellingPrice(0);
@@ -718,10 +718,10 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   <input type="number" min="1" step="0.001" value={formUnitsPerPurchase} onChange={e => setFormUnitsPerPurchase(Number(e.target.value) || 1)} className="w-full px-3 py-2 border border-slate-300 rounded-lg"/>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500">Ví dụ: nhập theo thùng, 1 thùng có 30 gói; hoặc nhập theo cây, 1 cây có 12 kg.</p>
+              <p className="text-[11px] text-slate-500">Ví dụ: mì bán theo gói, nhập theo thùng 30 gói. Đường bán theo kg, nhập theo cây 12 kg. Giá bán lẻ được cài riêng.</p>
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Giá vốn nhập hàng (VNĐ)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Giá vốn mỗi {formUnit || 'đơn vị bán'} (VNĐ)</label>
                   <input
                     type="number"
                     min="0"
