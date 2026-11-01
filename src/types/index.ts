@@ -40,8 +40,10 @@ export interface CartItem {
   productId: string;
   code: string;
   name: string;
-  unit: string;
-  costPrice: number;
+  unit: string; // Đơn vị đang bán: gói, thùng, kg, cây...
+  baseUnit?: string; // Đơn vị tồn kho nhỏ nhất
+  unitsPerSale?: number; // Số đơn vị tồn kho trong 1 đơn vị bán
+  costPrice: number; // Giá vốn trên một đơn vị tồn kho nhỏ nhất
   originalPrice: number; // giá gốc niêm yết
   customPrice: number; // giá bán thực tế cho phép điều chỉnh
   quantity: number;
