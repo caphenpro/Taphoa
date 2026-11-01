@@ -292,7 +292,7 @@ export const POSComponent: React.FC<POSProps> = ({
     if (insufficient) {
       const product = products.find(p => p.id === insufficient.productId);
       alert(product
-        ? `Hàng "${product.name}" chỉ còn ${product.stock} ${product.unit}. Vui lòng giảm số lượng trước khi thanh toán.`
+        ? `Hàng "${product.name}" chỉ còn ${product.stock} ${product.unit}; mỗi ${insufficient.unit} quy đổi ${insufficient.unitsPerSale || 1} ${product.unit}. Vui lòng giảm số lượng trước khi thanh toán.`
         : 'Một sản phẩm trong giỏ không còn tồn tại. Vui lòng kiểm tra lại.');
       return;
     }
