@@ -43,7 +43,6 @@ export const POSComponent: React.FC<POSProps> = ({
   onAddQuickCustomer,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
 
   // Customer selection
@@ -87,15 +86,6 @@ export const POSComponent: React.FC<POSProps> = ({
   const [quickProductPrice, setQuickProductPrice] = useState(0);
   const [quickProductStock, setQuickProductStock] = useState(0);
 
-  // Categories list
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach(p => {
-      if (p.category) set.add(p.category);
-    });
-    return ['all', ...Array.from(set)];
-  }, [products]);
-
   // Filtered products
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -103,10 +93,9 @@ export const POSComponent: React.FC<POSProps> = ({
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
-      return matchSearch && matchCat;
+      return matchSearch;
     });
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm]);
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId);
@@ -430,16 +419,6 @@ export const POSComponent: React.FC<POSProps> = ({
   };
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  const scrollToCart = () => {
-    const el = document.getElementById('pos-cart-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToCatalog = () => {
-    const el = document.getElementById('pos-catalog-section');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
 
   return (
     <div className="flex flex-col h-full gap-2 p-2 md:p-3 bg-slate-50 overflow-y-auto relative">
