@@ -93,21 +93,21 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/taphoa-release.jks
           test -s android/app/taphoa-release.jks
           cat > android/ci-signing.gradle <<'GRADLE'
-          gradle.projectsEvaluated {
-              def appProject = gradle.rootProject.findProject(':app')
-              if (appProject == null) {
-                  throw new GradleException("Android :app project was not found")
+          allprojects { appProject ->
+              appProject.plugins.withId('com.android.application') {
+                  def androidComponents = appProject.extensions.findByName('androidComponents')
+                  if (androidComponents == null) {
+                      throw new GradleException("Android Components extension was not found")
+                  }
+                  androidComponents.finalizeDsl { androidExtension ->
+                      def releaseSigning = androidExtension.signingConfigs.create('ciRelease')
+                      releaseSigning.storeFile = appProject.file('taphoa-release.jks')
+                      releaseSigning.storePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                      releaseSigning.keyAlias = System.getenv('ANDROID_KEY_ALIAS')
+                      releaseSigning.keyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+                      androidExtension.buildTypes.getByName('release').signingConfig = releaseSigning
+                  }
               }
-              def androidExtension = appProject.extensions.findByName('android')
-              if (androidExtension == null) {
-                  throw new GradleException("Android Gradle extension was not found")
-              }
-              def releaseSigning = androidExtension.signingConfigs.create('ciRelease')
-              releaseSigning.storeFile = appProject.file('taphoa-release.jks')
-              releaseSigning.storePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
-              releaseSigning.keyAlias = System.getenv('ANDROID_KEY_ALIAS')
-              releaseSigning.keyPassword = System.getenv('ANDROID_KEY_PASSWORD')
-              androidExtension.buildTypes.getByName('release').signingConfig = releaseSigning
           }
           GRADLE
 
