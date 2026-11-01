@@ -1099,14 +1099,7 @@ export const POSComponent: React.FC<POSProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setCompletedOrder(null)}
-                className="py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
-              >
-                Đóng
-              </button>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 disabled={isSharingReceipt}
@@ -1116,7 +1109,7 @@ export const POSComponent: React.FC<POSProps> = ({
                     await shareReceiptImage(completedOrder, settings);
                   } catch (error) {
                     console.error('Share receipt image failed:', error);
-                    alert('Chưa chia sẻ được ảnh hóa đơn. Vui lòng thử lại hoặc dùng chức năng In hóa đơn.');
+                    alert('Chưa chia sẻ được ảnh hóa đơn. Vui lòng thử lại.');
                   } finally {
                     setIsSharingReceipt(false);
                   }
@@ -1130,7 +1123,14 @@ export const POSComponent: React.FC<POSProps> = ({
                 onClick={() => printReceipt(completedOrder, settings)}
                 className="py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow"
               >
-                <Receipt className="w-4 h-4" /> In hóa đơn
+                <Receipt className="w-4 h-4" /> In PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setCompletedOrder(null)}
+                className="col-span-2 py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
+              >
+                Đóng (Tạo đơn mới)
               </button>
             </div>
           </div>
