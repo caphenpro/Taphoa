@@ -200,6 +200,17 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
   const handleConfirmStock = (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetProduct || (stockModalType === 'stock_adjustment' ? stockChangeQty < 0 : stockChangeQty <= 0)) return;
+    if (stockModalType === 'import') {
+      const importTotal = stockChangeQty * stockUnitCost;
+      if (supplierPaidAmount < importTotal && !supplierName.trim()) {
+        alert('Vui lòng nhập tên nhà cung cấp để theo dõi khoản còn nợ.');
+        return;
+      }
+      if (supplierPaidAmount > importTotal) {
+        alert('Số tiền đã trả không được lớn hơn tổng tiền nhập.');
+        return;
+      }
+    }
     if (stockModalType === 'export_damage' && stockChangeQty > targetProduct.stock) {
       alert('Số lượng xuất hỏng không được lớn hơn tồn kho hiện tại.');
       return;
@@ -746,7 +757,12 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                   min={stockModalType === 'stock_adjustment' ? 0 : 1}
                   required
                   value={stockChangeQty}
-                  onChange={e => setStockChangeQty(Number(e.target.value) || 0)}
+                  onChange={e => {
+                    const nextQty = Number(e.target.value) || 0;
+                    const wasFullyPaid = supplierPaidAmount === stockChangeQty * stockUnitCost;
+                    setStockChangeQty(nextQty);
+                    if (stockModalType === 'import' && wasFullyPaid) setSupplierPaidAmount(nextQty * stockUnitCost);
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-900"
                 />
               </div>
@@ -759,7 +775,12 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                       type="number"
                       min="0"
                       value={stockUnitCost}
-                      onChange={e => setStockUnitCost(Number(e.target.value) || 0)}
+                      onChange={e => {
+                        const nextCost = Number(e.target.value) || 0;
+                        const wasFullyPaid = supplierPaidAmount === stockChangeQty * stockUnitCost;
+                        setStockUnitCost(nextCost);
+                        if (wasFullyPaid) setSupplierPaidAmount(stockChangeQty * nextCost);
+                      }}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
                     />
                   </div>
