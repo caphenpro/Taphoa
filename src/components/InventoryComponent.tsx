@@ -53,6 +53,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
   const [stockChangeQty, setStockChangeQty] = useState<number>(1);
   const [stockUnitCost, setStockUnitCost] = useState<number>(0);
   const [supplierName, setSupplierName] = useState('');
+  const [supplierPaidAmount, setSupplierPaidAmount] = useState<number>(0);
   const [stockNote, setStockNote] = useState('');
 
   // Form states for Product
@@ -191,13 +192,18 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     setStockChangeQty(type === 'import' ? 10 : 1);
     setStockUnitCost(product.costPrice);
     setSupplierName('');
+    setSupplierPaidAmount(type === 'import' ? 10 * product.costPrice : 0);
     setStockNote('');
     setIsStockModalOpen(true);
   };
 
   const handleConfirmStock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetProduct || stockChangeQty <= 0) return;
+    if (!targetProduct || (stockModalType === 'stock_adjustment' ? stockChangeQty < 0 : stockChangeQty <= 0)) return;
+    if (stockModalType === 'export_damage' && stockChangeQty > targetProduct.stock) {
+      alert('Số lượng xuất hỏng không được lớn hơn tồn kho hiện tại.');
+      return;
+    }
 
     let delta = stockChangeQty;
     if (stockModalType === 'export_damage') {
@@ -229,6 +235,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       costPrice: stockUnitCost,
       totalValue: Math.abs(delta) * (stockUnitCost || targetProduct.costPrice),
       supplierName: supplierName.trim(),
+      supplierPaidAmount: stockModalType === 'import' ? Math.max(0, Math.min(stockChangeQty * stockUnitCost, supplierPaidAmount)) : 0,
       note: stockNote.trim() || (stockModalType === 'import' ? 'Nhập hàng vào kho' : 'Xuất hỏng/điều chỉnh'),
     };
 
@@ -736,7 +743,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min={stockModalType === 'stock_adjustment' ? 0 : 1}
                   required
                   value={stockChangeQty}
                   onChange={e => setStockChangeQty(Number(e.target.value) || 0)}
@@ -755,6 +762,11 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
                       onChange={e => setStockUnitCost(Number(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">Đã thanh toán đợt nhập (VNĐ)</label>
+                    <input type="number" min="0" max={stockChangeQty * stockUnitCost} value={supplierPaidAmount} onChange={e => setSupplierPaidAmount(Number(e.target.value) || 0)} className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold" />
+                    <p className="text-[11px] text-slate-500 mt-1">Tổng tiền nhập: {formatVND(stockChangeQty * stockUnitCost)} · Còn nợ: {formatVND(Math.max(0, stockChangeQty * stockUnitCost - supplierPaidAmount))}</p>
                   </div>
                   <div>
                     <label className="block text-slate-700 font-semibold mb-1">Nhà cung cấp / Đại lý sỉ</label>
