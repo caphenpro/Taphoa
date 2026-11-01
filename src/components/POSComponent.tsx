@@ -304,6 +304,8 @@ export const POSComponent: React.FC<POSProps> = ({
       amountPaid: effectiveAmountPaid,
       paymentMethod,
       debtAmount,
+      previousDebt: selectedCustomer?.totalDebt || 0,
+      totalDebtAfterOrder: selectedCustomer ? selectedCustomer.totalDebt + debtAmount : 0,
       cashAmount: paymentMethod === 'cash' ? effectiveAmountPaid : paymentMethod === 'split' ? effectiveAmountPaid / 2 : 0,
       transferAmount: paymentMethod === 'transfer' ? effectiveAmountPaid : paymentMethod === 'split' ? effectiveAmountPaid / 2 : 0,
       pointsEarned: earnedPoints,
