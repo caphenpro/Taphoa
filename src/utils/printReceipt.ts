@@ -24,6 +24,10 @@ export function printReceipt(order: Order, settings: StoreSettings) {
   `).join('');
 
   const paymentText = order.paymentMethod === 'cash' ? 'Tiền mặt' : order.paymentMethod === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Chia khoản';
+  const previousDebt = Math.max(0, order.previousDebt || 0);
+  const newDebt = Math.max(0, order.debtAmount || 0);
+  const totalDebtAfterOrder = Math.max(0, order.totalDebtAfterOrder ?? (previousDebt + newDebt));
+  const hasCustomerDebt = previousDebt > 0 || newDebt > 0 || totalDebtAfterOrder > 0;
 
   const html = `
     <!DOCTYPE html>
@@ -122,8 +126,8 @@ export function printReceipt(order: Order, settings: StoreSettings) {
 
         ${order.debtAmount > 0 ? `
           <div class="row" style="color: #ea580c; font-weight: bold; font-size: 13px;">
-            <span>GHI NỢ CÒN LẠI:</span>
-            <span>${formatVND(order.debtAmount)}</span>
+            <span>NỢ PHÁT SINH ĐƠN NÀY:</span>
+            <span>${formatVND(newDebt)}</span>
           </div>
         ` : `
           <div class="row" style="color: #16a34a; font-size: 12px;">
@@ -131,6 +135,21 @@ export function printReceipt(order: Order, settings: StoreSettings) {
             <span>${formatVND(Math.max(0, order.amountPaid - order.finalTotal))}</span>
           </div>
         `}
+        ${hasCustomerDebt ? `
+          <div class="divider"></div>
+          <div class="row" style="font-size: 12px;">
+            <span>Nợ cũ trước đơn:</span>
+            <span>${formatVND(previousDebt)}</span>
+          </div>
+          <div class="row" style="font-size: 12px;">
+            <span>Nợ mới của đơn:</span>
+            <span>${formatVND(newDebt)}</span>
+          </div>
+          <div class="row" style="color: #c2410c; font-weight: bold; font-size: 14px; border-top: 1px solid #fed7aa; padding-top: 5px;">
+            <span>TỔNG NỢ HIỆN TẠI:</span>
+            <span>${formatVND(totalDebtAfterOrder)}</span>
+          </div>
+        ` : ''}
 
         ${order.pointsEarned > 0 ? `
           <div style="margin-top: 6px; padding: 4px; background: #f0fdf4; border-radius: 4px; text-align: center; font-size: 11px; color: #15803d;">
