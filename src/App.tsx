@@ -322,7 +322,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab('reports')
+            onClick={() => setActiveTab('reports')}
             className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 whitespace-nowrap ${
               activeTab === 'reports'
                 ? 'border-sky-400 text-sky-400 bg-slate-800/60'
