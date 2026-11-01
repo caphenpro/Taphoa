@@ -442,14 +442,14 @@ export const POSComponent: React.FC<POSProps> = ({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 p-2 md:p-4 bg-slate-50 overflow-y-auto lg:overflow-hidden relative">
+    <div className="flex flex-col h-full gap-2 p-2 md:p-3 bg-slate-50 overflow-y-auto relative">
       {/* LEFT: Product Catalog & Fast search */}
       <div
         id="pos-catalog-section"
-        className="flex-1 flex flex-col min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:shrink lg:overflow-hidden min-h-[420px] lg:min-h-0"
+        className="w-full flex flex-col min-w-0 bg-white border-b border-slate-200 shrink-0"
       >
         {/* Search Header */}
-        <div className="p-3 border-b border-slate-200 bg-white space-y-3">
+        <div className="p-2 bg-white">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -471,118 +471,37 @@ export const POSComponent: React.FC<POSProps> = ({
             </div>
           </div>
 
-          {/* Category Badges */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition ${
-                  selectedCategory === cat
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {cat === 'all' ? 'Tất cả' : cat}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Mobile floating quick view & scroll to cart bar */}
-        {cart.length > 0 && (
-          <div className="lg:hidden p-2.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shadow-sm shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-sky-400 text-slate-900 font-extrabold text-xs flex items-center justify-center">
-                {totalCartCount}
-              </span>
-              <div className="text-xs">
-                <span className="text-slate-300">Đã chọn {totalCartCount} món • </span>
-                <span className="font-bold text-emerald-400 text-sm">{formatVND(finalTotal)}</span>
-              </div>
-            </div>
+
+        {/* Product name suggestions */}
+        <div className="max-h-56 overflow-y-auto bg-white">
+          {!searchTerm.trim() && <div className="px-3 py-2 text-xs text-slate-400">Nhập tên sản phẩm để tìm hàng</div>}
+          {searchTerm.trim() && filteredProducts.slice(0, 20).map(product => (
             <button
+              key={product.id}
               type="button"
-              onClick={scrollToCart}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+              disabled={product.stock <= 0}
+              onClick={() => { addToCart(product); setSearchTerm(''); }}
+              className="w-full text-left px-3 py-2.5 border-t border-slate-100 text-sm text-slate-800 disabled:text-slate-300 disabled:bg-slate-50"
             >
-              <span>Xem giỏ hàng & thanh toán ↓</span>
+              {product.name}
             </button>
-          </div>
-        )}
-
-        {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {filteredProducts.map(product => {
-            const isOutOfStock = product.stock <= 0;
-            const isLowStock = product.stock > 0 && product.stock <= (product.minStockAlert || 5);
-
-            return (
-              <div
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className={`relative flex flex-col justify-between p-3 rounded-xl border transition cursor-pointer select-none text-left ${
-                  isOutOfStock
-                    ? 'bg-slate-50 border-slate-200 opacity-60'
-                    : 'bg-white border-slate-200 hover:border-sky-500 hover:shadow-md active:scale-98'
-                }`}
+          ))}
+          {searchTerm.trim() && filteredProducts.length === 0 && (
+            <div className="px-3 py-3 border-t border-slate-100 text-sm text-slate-500">
+              Không tìm thấy sản phẩm.
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickProductName(searchTerm.trim());
+                  setQuickProductCode(/^\d+$/.test(searchTerm.trim()) ? searchTerm.trim() : '');
+                  setIsQuickProductModal(true);
+                }}
+                className="ml-2 text-sky-700 underline"
               >
-                <div>
-                  <div className="flex justify-between items-start gap-1">
-                    <span className="text-[11px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded">
-                      {product.unit}
-                    </span>
-                    {isOutOfStock ? (
-                      <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded">
-                        Hết hàng
-                      </span>
-                    ) : isLowStock ? (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded">
-                        Còn {product.stock}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        Kho: {product.stock}
-                      </span>
-                    )}
-                  </div>
-
-                  <h4 className="font-semibold text-slate-800 text-sm mt-1.5 line-clamp-2 leading-snug">
-                    {product.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">{product.code}</p>
-                </div>
-
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-baseline justify-between">
-                  <span className="text-base font-bold text-sky-700">
-                    {formatVND(product.sellingPrice)}
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Vốn: {formatVND(product.costPrice)}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredProducts.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
-              <AlertCircle className="w-10 h-10 mb-2 stroke-1" />
-              <p className="text-sm font-medium">Không tìm thấy sản phẩm phù hợp</p>
-              <p className="text-xs text-slate-400 mt-1">Thử đổi từ khóa hoặc quét lại mã vạch</p>
-              {searchTerm.trim() && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickProductName(searchTerm.trim());
-                    setQuickProductCode(/^\d+$/.test(searchTerm.trim()) ? searchTerm.trim() : '');
-                    setIsQuickProductModal(true);
-                  }}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm"
-                >
-                  <Plus className="w-4 h-4" /> Thêm sản phẩm “{searchTerm.trim()}”
-                </button>
-              )}
+                Thêm mới
+              </button>
             </div>
           )}
         </div>
@@ -591,20 +510,11 @@ export const POSComponent: React.FC<POSProps> = ({
       {/* RIGHT: Bill & Checkout Panel */}
       <div
         id="pos-cart-section"
-        className="w-full lg:w-96 xl:w-[420px] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 shrink-0 lg:overflow-hidden"
+        className="w-full flex flex-col bg-white border-t border-slate-300 shrink-0"
       >
-        <div className="lg:hidden p-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
-          <span>🛒 GIỎ HÀNG & THANH TOÁN</span>
-          <button
-            type="button"
-            onClick={scrollToCatalog}
-            className="text-sky-600 hover:underline text-[11px] font-semibold"
-          >
-            ↑ Chọn thêm sản phẩm
-          </button>
-        </div>
+        <div className="px-3 py-2 border-b border-slate-200 text-sm font-bold text-slate-800">HÓA ĐƠN</div>
         {/* Customer Header */}
-        <div className="p-3 border-b border-slate-200 bg-slate-50/70">
+        <div className="p-2 border-b border-slate-200 bg-white">
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1">
               <select
@@ -651,11 +561,11 @@ export const POSComponent: React.FC<POSProps> = ({
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 min-h-[100px] overflow-y-auto p-2.5 space-y-2">
+        <div className="min-h-[48px] overflow-y-auto px-2 py-1 space-y-0">
           {cart.map(item => (
             <div
               key={item.productId}
-              className="p-2.5 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition"
+              className="py-2 border-b border-slate-100 bg-white"
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
@@ -713,7 +623,7 @@ export const POSComponent: React.FC<POSProps> = ({
               </div>
 
               {/* Quantity Controls */}
-              <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100">
+              <div className="mt-1 flex items-center justify-between pt-1">
                 <div className="flex items-center border border-slate-200 rounded-md overflow-hidden bg-slate-50">
                   <button
                     onClick={() => updateQuantity(item.productId, -1)}
@@ -751,8 +661,7 @@ export const POSComponent: React.FC<POSProps> = ({
           {cart.length === 0 && (
             <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-center p-4">
               <Receipt className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-xs font-medium">Giỏ hàng đang trống</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Nhấp chọn mặt hàng bên trái để thêm vào đơn</p>
+              <p className="text-sm text-slate-400">Chưa chọn sản phẩm</p>
             </div>
           )}
         </div>
