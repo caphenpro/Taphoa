@@ -149,6 +149,22 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
         updatedAt: new Date().toISOString(),
       };
       onUpdateProduct(updated);
+      const stockDelta = updated.stock - editingProduct.stock;
+      if (stockDelta !== 0) {
+        onStockTransaction({
+          id: 'inv-' + Date.now(),
+          type: 'stock_adjustment',
+          date: new Date().toISOString(),
+          productId: updated.id,
+          productName: updated.name,
+          productCode: updated.code,
+          quantityChange: stockDelta,
+          unit: updated.unit,
+          costPrice: updated.costPrice,
+          totalValue: Math.abs(stockDelta) * updated.costPrice,
+          note: 'Điều chỉnh tồn kho khi sửa sản phẩm',
+        });
+      }
     } else {
       const newProd: Product = {
         id: 'prod-' + Date.now(),
@@ -227,7 +243,9 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
     const updatedProd: Product = {
       ...targetProduct,
       stock: newStock,
-      costPrice: stockModalType === 'import' && stockUnitCost > 0 ? stockUnitCost : targetProduct.costPrice,
+      costPrice: stockModalType === 'import' && newStock > 0
+        ? ((targetProduct.stock * targetProduct.costPrice) + (stockChangeQty * stockUnitCost)) / newStock
+        : targetProduct.costPrice,
       updatedAt: new Date().toISOString(),
     };
 
@@ -244,7 +262,7 @@ export const InventoryComponent: React.FC<InventoryProps> = ({
       quantityChange: delta,
       unit: targetProduct.unit,
       costPrice: stockUnitCost,
-      totalValue: Math.abs(delta) * (stockUnitCost || targetProduct.costPrice),
+      totalValue: Math.abs(delta) * (stockModalType === 'import' ? stockUnitCost : (stockUnitCost || targetProduct.costPrice)),
       supplierName: supplierName.trim(),
       supplierPaidAmount: stockModalType === 'import' ? Math.max(0, Math.min(stockChangeQty * stockUnitCost, supplierPaidAmount)) : 0,
       note: stockNote.trim() || (stockModalType === 'import' ? 'Nhập hàng vào kho' : 'Xuất hỏng/điều chỉnh'),
