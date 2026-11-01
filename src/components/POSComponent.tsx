@@ -203,7 +203,7 @@ export const POSComponent: React.FC<POSProps> = ({
   };
 
   const setItemQuantity = (productId: string, quantity: number) => {
-    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    if (!Number.isFinite(quantity) || quantity < 0) return;
     setCart(prev => prev.map(item => {
       if (item.productId !== productId) return item;
       const singleAfterDisc = item.discountType === 'percentage'
@@ -612,9 +612,10 @@ export const POSComponent: React.FC<POSProps> = ({
                     type="number" onFocus={e => e.currentTarget.select()}
                     min="0.001"
                     step="0.001"
-                    value={item.quantity}
+                    value={item.quantity || ''}
                     aria-label={`Số lượng ${item.name}`}
-                    onChange={e => setItemQuantity(item.productId, (e.target.value === '' ? ('' as any) : Number(e.target.value)))}
+                    onChange={e => setItemQuantity(item.productId, e.target.value === '' ? 0 : Number(e.target.value))}
+                    onBlur={() => { if (item.quantity <= 0) setItemQuantity(item.productId, 1); }}
                     className="w-16 px-1 py-1 text-xs font-bold text-center bg-white border-x border-slate-200"
                   />
                   <button
