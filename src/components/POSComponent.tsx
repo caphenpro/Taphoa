@@ -14,11 +14,13 @@ import {
   Sparkles,
   Award,
   AlertCircle,
-  PackagePlus
+  PackagePlus,
+  Share2
 } from 'lucide-react';
 import { Product, Customer, CartItem, Order, PaymentMethod, StoreSettings } from '../types';
 import { formatVND, generateOrderNumber } from '../utils/storage';
 import { printReceipt } from '../utils/printReceipt';
+import { shareReceiptImage } from '../utils/shareReceiptImage';
 import confetti from 'canvas-confetti';
 
 interface POSProps {
@@ -68,6 +70,7 @@ export const POSComponent: React.FC<POSProps> = ({
 
   // Success modal state
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [isSharingReceipt, setIsSharingReceipt] = useState(false);
 
   // Item customization modal
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
@@ -1096,20 +1099,38 @@ export const POSComponent: React.FC<POSProps> = ({
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setCompletedOrder(null)}
-                className="flex-1 py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
+                className="py-2.5 border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700"
               >
-                Đóng (Tạo đơn mới)
+                Đóng
+              </button>
+              <button
+                type="button"
+                disabled={isSharingReceipt}
+                onClick={async () => {
+                  setIsSharingReceipt(true);
+                  try {
+                    await shareReceiptImage(completedOrder, settings);
+                  } catch (error) {
+                    console.error('Share receipt image failed:', error);
+                    alert('Chưa chia sẻ được ảnh hóa đơn. Vui lòng thử lại hoặc dùng chức năng In hóa đơn.');
+                  } finally {
+                    setIsSharingReceipt(false);
+                  }
+                }}
+                className="py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow"
+              >
+                <Share2 className="w-4 h-4" /> {isSharingReceipt ? 'Đang tạo ảnh…' : 'Chia sẻ ảnh'}
               </button>
               <button
                 type="button"
                 onClick={() => printReceipt(completedOrder, settings)}
-                className="flex-1 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow"
+                className="py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow"
               >
-                <Receipt className="w-4 h-4" /> In Hóa Đơn (PDF)
+                <Receipt className="w-4 h-4" /> In hóa đơn
               </button>
             </div>
           </div>
