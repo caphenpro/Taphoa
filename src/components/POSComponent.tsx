@@ -251,6 +251,18 @@ export const POSComponent: React.FC<POSProps> = ({
   const handleCheckout = () => {
     if (cart.length === 0) return;
 
+    const insufficient = cart.find(item => {
+      const product = products.find(p => p.id === item.productId);
+      return !product || item.quantity > product.stock;
+    });
+    if (insufficient) {
+      const product = products.find(p => p.id === insufficient.productId);
+      alert(product
+        ? `Hàng "${product.name}" chỉ còn ${product.stock} ${product.unit}. Vui lòng giảm số lượng trước khi thanh toán.`
+        : 'Một sản phẩm trong giỏ không còn tồn tại. Vui lòng kiểm tra lại.');
+      return;
+    }
+
     if (debtAmount > 0 && !selectedCustomer) {
       alert('Vui lòng chọn hoặc thêm thông tin Khách hàng để ghi nợ số tiền ' + formatVND(debtAmount));
       return;
