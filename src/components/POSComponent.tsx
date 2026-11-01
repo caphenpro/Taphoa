@@ -91,8 +91,7 @@ export const POSComponent: React.FC<POSProps> = ({
     return products.filter(p => {
       const matchSearch =
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchTerm.toLowerCase());
+        p.code.toLowerCase().includes(searchTerm.toLowerCase());
       return matchSearch;
     });
   }, [products, searchTerm]);
