@@ -41,7 +41,7 @@ export default function App() {
         if (cartItem) {
           return {
             ...prod,
-            stock: Math.max(0, prod.stock - cartItem.quantity),
+            stock: Math.max(0, prod.stock - cartItem.quantity * (cartItem.unitsPerSale || 1)),
             updatedAt: new Date().toISOString(),
           };
         }
@@ -67,12 +67,12 @@ export default function App() {
         productId: item.productId,
         productName: item.name,
         productCode: item.code,
-        quantityChange: -item.quantity,
-        unit: item.unit,
+        quantityChange: -(item.quantity * (item.unitsPerSale || 1)),
+        unit: item.baseUnit || item.unit,
         costPrice: item.costPrice,
-        totalValue: item.costPrice * item.quantity,
+        totalValue: item.costPrice * item.quantity * (item.unitsPerSale || 1),
         referenceOrderNumber: order.orderNumber,
-        note: `Bán lẻ theo đơn ${order.orderNumber}`,
+        note: `Bán ${item.quantity} ${item.unit} theo đơn ${order.orderNumber}`,
       }));
 
       return {
