@@ -87,6 +87,7 @@ export interface InventoryTransaction {
   costPrice?: number;
   totalValue?: number;
   supplierName?: string;
+  supplierPaidAmount?: number;
   referenceOrderNumber?: string;
   note?: string;
 }
@@ -99,6 +100,26 @@ export interface DebtPayment {
   amountPaid: number;
   paymentMethod: 'cash' | 'transfer';
   remainingDebt: number;
+  note?: string;
+}
+
+export interface SupplierDebt {
+  id: string;
+  date: string;
+  supplierName: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  inventoryTransactionId?: string;
+  note?: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  date: string;
+  supplierDebtId: string;
+  supplierName: string;
+  amount: number;
   note?: string;
 }
 
@@ -124,6 +145,8 @@ export interface AppStateData {
   orders: Order[];
   inventoryTransactions: InventoryTransaction[];
   debtPayments: DebtPayment[];
+  supplierDebts: SupplierDebt[];
+  supplierPayments: SupplierPayment[];
   priceHistory: PriceHistoryEntry[];
   settings: StoreSettings;
   lastBackupDate?: string;
