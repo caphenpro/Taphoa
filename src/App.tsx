@@ -198,8 +198,15 @@ export default function App() {
 
   // Settings & Restore
   const handleRestoreState = (newState: AppStateData) => {
-    setAppState(newState);
-    saveAppState(newState);
+    const safeState: AppStateData = {
+      ...newState,
+      supplierDebts: newState.supplierDebts || [],
+      supplierPayments: newState.supplierPayments || [],
+      priceHistory: newState.priceHistory || [],
+      debtPayments: newState.debtPayments || [],
+    };
+    setAppState(safeState);
+    saveAppState(safeState);
   };
 
   const handleUpdateSettings = (newSettings: StoreSettings) => {
