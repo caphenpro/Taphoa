@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/android-compact-pwa
+      - feature/simple-shop-debts-offline
     paths:
       - 'src/**'
       - 'public/**'
@@ -40,6 +41,9 @@ jobs:
 
       - name: Install web dependencies
         run: npm install --no-audit --no-fund
+
+      - name: TypeScript check
+        run: npm run lint
 
       - name: Build web app
         run: npm run build
