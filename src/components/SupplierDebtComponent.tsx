@@ -6,14 +6,19 @@ import { formatDate, formatVND } from '../utils/storage';
 interface Props {
   debts: SupplierDebt[];
   payments: SupplierPayment[];
-  onRecordPayment: (debtId: string, amount: number, note: string) => void;\n  onAddDebt: (supplierName: string, amount: number, note: string) => void;
+  onRecordPayment: (debtId: string, amount: number, note: string) => void;
+  onAddDebt: (supplierName: string, amount: number, note: string) => void;
 }
 
 export const SupplierDebtComponent: React.FC<Props> = ({ debts, payments, onRecordPayment, onAddDebt }) => {
   const [search, setSearch] = useState('');
   const [target, setTarget] = useState<SupplierDebt | null>(null);
   const [amount, setAmount] = useState(0);
-  const [note, setNote] = useState('');\n  const [showAddDebt, setShowAddDebt] = useState(false);\n  const [newSupplier, setNewSupplier] = useState('');\n  const [newDebtAmount, setNewDebtAmount] = useState(0);\n  const [newDebtNote, setNewDebtNote] = useState('');
+  const [note, setNote] = useState('');
+  const [showAddDebt, setShowAddDebt] = useState(false);
+  const [newSupplier, setNewSupplier] = useState('');
+  const [newDebtAmount, setNewDebtAmount] = useState(0);
+  const [newDebtNote, setNewDebtNote] = useState('');
 
   const rows = useMemo(() => debts.filter(d =>
     d.supplierName.toLowerCase().includes(search.toLowerCase()) &&
@@ -22,7 +27,14 @@ export const SupplierDebtComponent: React.FC<Props> = ({ debts, payments, onReco
   const totalDebt = debts.reduce((sum, d) => sum + Math.max(0, d.remainingAmount), 0);
   const totalPaid = debts.reduce((sum, d) => sum + d.paidAmount, 0);
 
-  const addDebt = (e: React.FormEvent) => {\n    e.preventDefault();\n    if (!newSupplier.trim() || newDebtAmount <= 0) return;\n    onAddDebt(newSupplier.trim(), newDebtAmount, newDebtNote.trim());\n    setShowAddDebt(false); setNewSupplier(''); setNewDebtAmount(0); setNewDebtNote('');\n  };\n\n  const submit = (e: React.FormEvent) => {
+  const addDebt = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupplier.trim() || newDebtAmount <= 0) return;
+    onAddDebt(newSupplier.trim(), newDebtAmount, newDebtNote.trim());
+    setShowAddDebt(false); setNewSupplier(''); setNewDebtAmount(0); setNewDebtNote('');
+  };
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!target || amount <= 0 || amount > target.remainingAmount) return;
     onRecordPayment(target.id, amount, note.trim());
